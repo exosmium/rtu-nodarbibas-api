@@ -113,7 +113,7 @@ class RTUScraper {
   async getPeriods(): Promise<Period[]> {
     const $ = await this.getInitialData();
     const options: Period[] = [];
-    
+
     // Parse semester options from #semester-id select element
     $(`select#semester-id option`).each((_, element) => {
       const $option = $(element);
@@ -133,15 +133,15 @@ class RTUScraper {
         });
       }
     });
-    
+
     return options;
   }
 
-  async getPrograms(periodId: string): Promise<Program[]> {
+  async getPrograms(_periodId: string): Promise<Program[]> {
     // Programs are available on the main page, periodId is not actually used in the current implementation
     const $ = await this.getInitialData();
     const options: Program[] = [];
-    
+
     // Parse program options from #program-id select element
     $(`select#program-id option`).each((_, element) => {
       const $option = $(element);
@@ -162,7 +162,7 @@ class RTUScraper {
         });
       }
     });
-    
+
     return options;
   }
 
