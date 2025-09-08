@@ -1,0 +1,30 @@
+# Source files
+src/
+tests/
+tsconfig.json
+vite.config.ts
+vitest.config.ts
+
+# Development files
+*.md
+!README.md
+.gitignore
+.npmignore
+
+# IDE files
+.vscode/
+.idea/
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.*
+*.spec.*
+
+# Development dependencies
+node_modules/
+npm-debug.log*
+
+# Build artifacts
+*.tsbuildinfo
