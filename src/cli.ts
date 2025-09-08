@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { Command } from 'commander';
 import {
   getCourses,
@@ -13,8 +11,8 @@ import {
 const program = new Command();
 
 program
-  .name('rtu-schedule')
-  .description('RTU Schedule Scraper CLI')
+  .name('rtu-nodarbibas-api')
+  .description('RTU Nodarbibas API CLI')
   .version('1.0.0');
 
 program
@@ -188,7 +186,7 @@ program.on('command:*', (operands: string[]) => {
   if (command !== undefined) {
     console.error(`Unknown command: ${command}`);
   }
-  console.log('Run "rtu-schedule --help" to see available commands.');
+  console.log('Run "rtu-nodarbibas-api --help" to see available commands.');
   process.exit(1);
 });
 

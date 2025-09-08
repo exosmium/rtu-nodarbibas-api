@@ -42,11 +42,11 @@
     "university",
     "timetable"
   ],
-  "author": "Your Name",
+  "author": "exosmium",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/rtu-nodarbibas-api.git"
+    "url": "https://github.com/exosmium/rtu-nodarbibas-api.git"
   },
   "dependencies": {
     "axios": "^1.6.0",
