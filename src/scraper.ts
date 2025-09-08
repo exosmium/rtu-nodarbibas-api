@@ -144,7 +144,8 @@ class RTUScraper {
       }
     );
 
-    if (isPublishedResponse.trim() !== 'true') {
+    const isPublished = String(isPublishedResponse).trim().toLowerCase();
+    if (isPublished !== 'true') {
       throw new Error('Semester program is not published');
     }
 
@@ -156,7 +157,10 @@ class RTUScraper {
       }
     );
 
-    const subjects: Course[] = JSON.parse(subjectsResponse) as Course[];
+    // Check if response is already parsed (axios auto-parses JSON)
+    const subjects: Course[] = typeof subjectsResponse === 'string' 
+      ? JSON.parse(subjectsResponse) 
+      : subjectsResponse as Course[];
     return subjects;
   }
 
@@ -197,7 +201,10 @@ class RTUScraper {
       }
     );
 
-    const events: RTUEvent[] = JSON.parse(eventsResponse) as RTUEvent[];
+    // Check if response is already parsed (axios auto-parses JSON)
+    const events: RTUEvent[] = typeof eventsResponse === 'string' 
+      ? JSON.parse(eventsResponse) 
+      : eventsResponse as RTUEvent[];
     return this.convertEventsToScheduleEntries(events);
   }
 
