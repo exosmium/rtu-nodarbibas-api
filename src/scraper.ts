@@ -112,25 +112,58 @@ class RTUScraper {
 
   async getPeriods(): Promise<Period[]> {
     const $ = await this.getInitialData();
-    const options = this.parseDropdownOptions($, 'periods');
-    return options.map((opt) => ({
-      id: opt.value,
-      name: opt.text,
-    }));
+    const options: Period[] = [];
+    
+    // Parse semester options from #semester-id select element
+    $(`select#semester-id option`).each((_, element) => {
+      const $option = $(element);
+      const value = $option.attr('value')?.trim();
+      const text = $option.text().trim();
+
+      if (
+        value !== undefined &&
+        text !== undefined &&
+        value !== '' &&
+        value !== '0' &&
+        text !== 'Izvēlne..'
+      ) {
+        options.push({
+          id: value,
+          name: text,
+        });
+      }
+    });
+    
+    return options;
   }
 
   async getPrograms(periodId: string): Promise<Program[]> {
-    const html = await this.makeRequest(BASE_URL, {
-      periods: periodId,
-    });
-    const $ = cheerio.load(html);
+    // Programs are available on the main page, periodId is not actually used in the current implementation
+    const $ = await this.getInitialData();
+    const options: Program[] = [];
+    
+    // Parse program options from #program-id select element
+    $(`select#program-id option`).each((_, element) => {
+      const $option = $(element);
+      const value = $option.attr('value')?.trim();
+      const text = $option.text().trim();
 
-    const options = this.parseDropdownOptions($, 'programs');
-    return options.map((opt) => ({
-      id: opt.value,
-      name: opt.text,
-      semesterProgramId: parseInt(opt.value, 10),
-    }));
+      if (
+        value !== undefined &&
+        text !== undefined &&
+        value !== '' &&
+        value !== '0' &&
+        text !== 'Izvēlne..'
+      ) {
+        options.push({
+          id: value,
+          name: text,
+          semesterProgramId: parseInt(value, 10),
+        });
+      }
+    });
+    
+    return options;
   }
 
   async getCourses(_periodId: string, programId: string): Promise<Course[]> {

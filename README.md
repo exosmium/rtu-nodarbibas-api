@@ -48,35 +48,55 @@ npx rtu-nodarbibas-api courses dummy 27316
 
 ## API Functions
 
+### `getPeriods(): Promise<Period[]>`
+Get study periods.
+
+```typescript
+const periods = await getPeriods();
+// Returns: [{ id: '123', name: 'Fall 2025' }]
+```
+
+### `getPrograms(periodId: string): Promise<Program[]>`
+Get programs for period.
+
+```typescript
+const programs = await getPrograms('periodId');
+// Returns: [{ id: '27316', name: 'Computer Science', semesterProgramId: 123 }]
+```
+
 ### `getCourses(periodId: string, programId: string): Promise<Course[]>`
-Returns available courses for a program.
+Get courses for program.
 
 ```typescript
 const courses = await getCourses('periodId', '27316');
-// Returns: Course[] with subjectId, titleLV, titleEN, code, etc.
+// Returns: [{ subjectId: 38294, titleLV: 'Civilā aizsardzība', code: 'IV0759', ... }]
+```
+
+### `getGroups(periodId: string, programId: string, courseId: string): Promise<Group[]>`
+Get groups for course.
+
+```typescript
+const groups = await getGroups('periodId', '27316', 'courseId');
+// Returns: [{ id: 'default', name: 'Default Group' }]
+```
+
+### `getSchedule(periodId: string, programId: string, courseId: string, groupId: string, year?: number, month?: number): Promise<ScheduleEntry[]>`
+Get full schedule.
+
+```typescript
+const schedule = await getSchedule('periodId', '27316', 'courseId', 'default', 2025, 9);
+// Returns: [{ date: '2025-09-02', time: '10:15 - 11:50', subject: 'Programming', ... }]
 ```
 
 ### `getScheduleBy(periodId: string, programId: string, courseId: string, groupId: string, filter: ScheduleFilter): Promise<ScheduleEntry[]>`
-Returns filtered schedule entries.
+Get filtered schedule.
 
 ```typescript
-// Filter options
-const filter = {
-  day: '2025-09-15',     // Specific date (YYYY-MM-DD)
-  week: 37,              // Week number
-  month: 9,              // Month (1-12)
-  year: 2025             // Year
-};
-
-const schedule = await getScheduleBy('periodId', '27316', 'courseId', 'default', filter);
-// Returns: ScheduleEntry[] with date, time, subject, type, lecturer, room
+const schedule = await getScheduleBy('periodId', '27316', 'courseId', 'default', {
+  day: '2025-09-15', // or week: 37, month: 9, year: 2025
+});
+// Returns: [{ date: '2025-09-15', time: '08:15 - 09:45', subject: 'Math', ... }]
 ```
-
-### Other Functions
-- `getPeriods()`: Get available study periods
-- `getPrograms(periodId)`: Get programs for period
-- `getGroups(periodId, programId, courseId)`: Get groups (returns default group)
-- `getSchedule(periodId, programId, courseId, groupId)`: Get full schedule without filters
 
 ## TypeScript Types
 
