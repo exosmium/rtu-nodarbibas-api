@@ -158,9 +158,10 @@ class RTUScraper {
     );
 
     // Check if response is already parsed (axios auto-parses JSON)
-    const subjects: Course[] = typeof subjectsResponse === 'string' 
-      ? JSON.parse(subjectsResponse) 
-      : subjectsResponse as Course[];
+    const subjects: Course[] =
+      typeof subjectsResponse === 'string'
+        ? (JSON.parse(subjectsResponse) as Course[])
+        : (subjectsResponse as Course[]);
     return subjects;
   }
 
@@ -202,9 +203,10 @@ class RTUScraper {
     );
 
     // Check if response is already parsed (axios auto-parses JSON)
-    const events: RTUEvent[] = typeof eventsResponse === 'string' 
-      ? JSON.parse(eventsResponse) 
-      : eventsResponse as RTUEvent[];
+    const events: RTUEvent[] =
+      typeof eventsResponse === 'string'
+        ? (JSON.parse(eventsResponse) as RTUEvent[])
+        : (eventsResponse as RTUEvent[]);
     return this.convertEventsToScheduleEntries(events);
   }
 
