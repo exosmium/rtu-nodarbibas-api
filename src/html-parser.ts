@@ -352,7 +352,12 @@ export class RTUHtmlParser {
 
     // Validate time format (HH:MM)
     const timeRegex = /^\d{1,2}:\d{2}$/;
-    if (start === '' || end === '' || !timeRegex.test(start) || !timeRegex.test(end)) {
+    if (
+      start === '' ||
+      end === '' ||
+      !timeRegex.test(start) ||
+      !timeRegex.test(end)
+    ) {
       return null;
     }
 
