@@ -13,26 +13,15 @@ export default defineConfig({
   ],
   build: {
     lib: {
-      entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        cli: resolve(__dirname, 'src/cli.ts'),
-      },
+      entry: resolve(__dirname, 'src/index.ts'),
       formats: ['es', 'cjs'],
-      fileName: (format, entryName) => {
+      fileName: (format) => {
         const extension = format === 'es' ? 'mjs' : 'js';
-        return `${entryName}.${extension}`;
+        return `index.${extension}`;
       },
     },
     rollupOptions: {
-      external: ['axios', 'cheerio', 'commander', 'dayjs'],
-      output: {
-        banner: (chunk) => {
-          if (chunk.name === 'cli') {
-            return '#!/usr/bin/env node';
-          }
-          return '';
-        },
-      },
+      external: ['axios', 'cheerio'],
     },
     sourcemap: false,
     minify: false,

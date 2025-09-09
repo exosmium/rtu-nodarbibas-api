@@ -335,36 +335,37 @@ export class RTUHtmlParser {
     if (!timeRange) return defaultTimeSlot;
 
     try {
-      // Handle different separators: " - ", "-", " – ", etc.
-      const parts = timeRange.split(/\s*[-–]\s*/);
-      if (parts.length !== 2) return defaultTimeSlot;
-
-      const [start, end] = parts.map((part) => part.trim());
-
-      // Validate time format (HH:MM)
-      const timeRegex = /^\d{1,2}:\d{2}$/;
-      if (
-        start === '' ||
-        end === '' ||
-        !timeRegex.test(start) ||
-        !timeRegex.test(end)
-      ) {
-        return defaultTimeSlot;
-      }
-
-      // Calculate duration in minutes
-      const startMinutes = this.timeToMinutes(start);
-      const endMinutes = this.timeToMinutes(end);
-      const duration = endMinutes - startMinutes;
-
-      return {
-        start,
-        end,
-        duration: duration > 0 ? duration : 0,
-      };
+      return this.parseValidTimeSlot(timeRange) ?? defaultTimeSlot;
     } catch {
       return defaultTimeSlot;
     }
+  }
+
+  private parseValidTimeSlot(timeRange: string): TimeSlot | null {
+    // Handle different separators: " - ", "-", " – ", etc.
+    const parts = timeRange.split(/\s*[-–]\s*/);
+    if (parts.length !== 2) return null;
+
+    const [startPart, endPart] = parts.map((part) => part.trim());
+    const start = startPart ?? '';
+    const end = endPart ?? '';
+
+    // Validate time format (HH:MM)
+    const timeRegex = /^\d{1,2}:\d{2}$/;
+    if (start === '' || end === '' || !timeRegex.test(start) || !timeRegex.test(end)) {
+      return null;
+    }
+
+    // Calculate duration in minutes
+    const startMinutes = this.timeToMinutes(start);
+    const endMinutes = this.timeToMinutes(end);
+    const duration = endMinutes - startMinutes;
+
+    return {
+      start,
+      end,
+      duration: duration > 0 ? duration : 0,
+    };
   }
 
   // Utility methods
