@@ -1,6 +1,36 @@
-# RTU Nodarbibas API
+<h1 align="center">
+  <br />
+  <a href="https://www.rtu.lv">
+    <img height="220" src="https://www.rtu.lv/download/rtu_logo_en.jpg" alt="RTU" style="border-radius: 20px;" />
+  </a>
+</h1>
 
-TypeScript library for interacting with RTU (Rīgas Tehniskā universitāte) scheduling system.
+<h2 align="center">RTU Schedule API</h2>
+
+<p align="center">
+  <em>Created by an RTU student who discovered that even a great university can lack a public API for schedules.<br />This library bridges that gap, making RTU schedule data accessible to everyone.</em>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/rtu-nodarbibas-api">
+    <img src="https://img.shields.io/npm/v/rtu-nodarbibas-api.svg" alt="npm version" />
+  </a>
+  <a href="https://www.npmjs.com/package/rtu-nodarbibas-api">
+    <img src="https://img.shields.io/npm/dm/rtu-nodarbibas-api.svg" alt="npm downloads" />
+  </a>
+  <img src="https://img.shields.io/badge/lang-en-blue.svg" alt="English" />
+  <a href="README.lv.md">
+    <img src="https://img.shields.io/badge/lang-lv-red.svg" alt="Latviešu" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#api-methods">API</a> •
+  <a href="#schedule-class">Schedule</a> •
+  <a href="#examples">Examples</a>
+</p>
 
 ## Installation
 
@@ -11,147 +41,292 @@ npm install rtu-nodarbibas-api
 ## Quick Start
 
 ```typescript
-import { RTUApiClient, RTUHtmlParser, apiClient, htmlParser } from 'rtu-nodarbibas-api';
+import { RTUSchedule } from 'rtu-nodarbibas-api';
 
-// Use default instances
-const events = await apiClient.fetchSemesterProgramEvents({
-  semesterProgramId: 123,
-  year: 2024,
-  month: 3
+const rtu = new RTUSchedule();
+
+// Get available periods, programs, courses, groups
+const periods = await rtu.getPeriods();
+const programs = await rtu.getPrograms('25/26-R');
+const courses = await rtu.getCourses('25/26-R', 'RDBD0');
+const groups = await rtu.getGroups('25/26-R', 'RDBD0', 1);
+
+// Get schedule
+const schedule = await rtu.getSchedule({
+  period: '25/26-R',      // Autumn 2025/2026
+  program: 'RDBD0',       // Computer Systems
+  course: 1,              // 1st year
+  group: 13               // Group 13 (optional)
 });
 
-// Or create custom instances
-const client = new RTUApiClient({ timeout: 15000 });
-const parser = new RTUHtmlParser();
+// Work with results
+console.log(schedule.count);                        // Entry count
+const lectures = schedule.filterByType('lecture');  // Only lectures
+const thisWeek = schedule.getThisWeek();            // This week's schedule
+const byDay = schedule.groupByDate();               // Group by date
 ```
 
 ## API Methods
 
-### RTUApiClient
-
-**POST requests to RTU backend endpoints:**
+### Discovery
 
 ```typescript
-// Fetch semester program events
-fetchSemesterProgramEvents(params: {
-  semesterProgramId: number;
-  year: number;
-  month: number;
-}): Promise<SemesterEvent[]>
+// All available semesters
+const periods = await rtu.getPeriods();
+// → [{ id, name, code, season, startDate, endDate, isSelected }, ...]
 
-// Fetch subjects for a semester program
-fetchSemesterProgramSubjects(semesterProgramId: number): Promise<Subject[]>
+// Current semester
+const current = await rtu.getCurrentPeriod();
 
-// Check if semester program is published
-checkSemesterProgramPublished(semesterProgramId: number): Promise<boolean>
+// Programs for a semester (by ID, code, or name)
+const programs = await rtu.getPrograms('25/26-R');
+const programs = await rtu.getPrograms(45);
+const programs = await rtu.getPrograms('Autumn 2025');
 
-// Find groups by course
-findGroupsByCourse(params: {
-  courseId: number;
-  semesterId: number;
-  programId: number;
-}): Promise<Group[]>
-
-// Find courses by program
-findCoursesByProgram(params: {
-  semesterId: number;
-  programId: number;
-}): Promise<Course[]>
-
-// Cache management
-clearCache(): void
-clearExpiredCache(): void
+// Courses and groups
+const courses = await rtu.getCourses('25/26-R', 'RDBD0');
+const groups = await rtu.getGroups('25/26-R', 'RDBD0', 1);
 ```
 
-### RTUHtmlParser
-
-**Parse structured data from RTU HTML:**
+### Getting Schedule
 
 ```typescript
-// Parse semester options from HTML select
-parseHtmlSemesters(html: string): Semester[]
+const schedule = await rtu.getSchedule({
+  // Period - code, name, or ID
+  period: '25/26-R',        // or: 'Autumn 2025', periodId: 45
 
-// Parse hidden semester metadata
-parseHtmlSemesterMetadata(html: string): SemesterMetadata
+  // Program - code, name, or ID
+  program: 'RDBD0',         // or: 'Computer Systems', programId: 123
 
-// Parse program options grouped by faculty
-parseHtmlPrograms(html: string): Faculty[]
+  // Course (required)
+  course: 1,
 
-// Parse schedule table data
-parseHtmlScheduleTable(html: string): ScheduleEvent[]
+  // Group (optional - without it returns all groups)
+  group: 13,
 
-// Parse faculty information
-parseHtmlFaculties(html: string): FacultyInfo[]
+  // Date range (optional - defaults to semester dates)
+  startDate: '2025-09-01',
+  endDate: '2025-12-31'
+});
+```
 
-// Parse breadcrumb navigation
-parseHtmlBreadcrumb(html: string): BreadcrumbItem[]
+## Schedule Class
 
-// Parse pagination information
-parseHtmlPagination(html: string): Pagination
+### Filtering
 
-// Parse page metadata from HTML head
-parseHtmlMetadata(html: string): PageMetadata
+All filters return a new `Schedule` object:
 
-// Parse time slot from time range string
-parseTimeSlot(timeRange: string): TimeSlot
+```typescript
+schedule.filter(e => e.durationMinutes > 60)    // Custom filter
+schedule.filterByType('lecture')                 // By type
+schedule.filterByType(['lecture', 'lab'])        // Multiple types
+schedule.filterByDateRange(from, to)             // Date range
+schedule.filterByDate(date)                      // Specific date
+schedule.filterByLecturer('Smith')               // By lecturer
+schedule.filterBySubject('Programming')          // By subject
+schedule.filterByLocation('Building A')          // By location
+schedule.filterByDayOfWeek(1)                    // By weekday (1=Monday)
+```
 
-// Utility methods
-normalizeText(text: string): string
-extractNumber(text: string): number
+**Types:** `lecture` | `practical` | `lab` | `seminar` | `consultation` | `exam` | `test` | `other`
+
+### Grouping
+
+```typescript
+schedule.groupByWeek()       // Map<weekNumber, ScheduleEntry[]>
+schedule.groupByDate()       // Map<'YYYY-MM-DD', ScheduleEntry[]>
+schedule.groupByDayOfWeek()  // Map<1-7, ScheduleEntry[]>
+schedule.groupBySubject()    // Map<subjectCode, ScheduleEntry[]>
+schedule.groupByLecturer()   // Map<name, ScheduleEntry[]>
+schedule.groupByType()       // Map<type, ScheduleEntry[]>
+```
+
+### Convenience Methods
+
+```typescript
+schedule.getToday()          // Today's entries
+schedule.getTomorrow()       // Tomorrow's entries
+schedule.getThisWeek()       // This week's entries
+schedule.getNextWeek()       // Next week's entries
+schedule.getUpcoming(7)      // Next N days
+schedule.getWeek(36)         // Specific week
+```
+
+### Aggregation
+
+```typescript
+schedule.getLecturers()      // string[] - unique lecturers
+schedule.getSubjects()       // {name, code}[] - unique subjects
+schedule.getLocations()      // string[] - unique locations
+schedule.getTypes()          // ScheduleEntryType[] - used types
+schedule.getDateRange()      // {start, end} | null - date range
+```
+
+### Properties
+
+```typescript
+schedule.count               // Entry count
+schedule.isEmpty             // Is empty
+schedule.first               // First entry
+schedule.last                // Last entry
+schedule.entries             // ScheduleEntry[] - all entries
+schedule.sorted('asc')       // Sorted by date
+schedule.toArray()           // Array copy
+
+// Iterable
+for (const entry of schedule) { ... }
+[...schedule]
+```
+
+## ScheduleEntry Structure
+
+```typescript
+interface ScheduleEntry {
+  id: number;
+  subject: { name: string; code: string };
+
+  // Time
+  date: Date;
+  startTime: string;         // "09:00"
+  endTime: string;           // "10:30"
+  startDateTime: Date;
+  endDateTime: Date;
+  durationMinutes: number;
+
+  // Location
+  location: string;          // "Building A-423"
+  building?: string;         // "Building A"
+  room?: string;             // "423"
+
+  // People
+  lecturer: string;
+  lecturers: string[];       // If multiple
+
+  // Classification
+  type: ScheduleEntryType;
+  typeRaw: string;           // Original type string
+
+  // Group
+  group: string;
+  groups: string[];          // If multiple
+
+  // Week
+  weekNumber: number;
+  dayOfWeek: number;         // 1-7 (Mon-Sun)
+  dayName: string;           // "Monday"
+}
+```
+
+## Error Handling
+
+```typescript
+import {
+  PeriodNotFoundError,      // Period not found
+  ProgramNotFoundError,     // Program not found
+  CourseNotFoundError,      // Course not found
+  GroupNotFoundError,       // Group not found
+  InvalidOptionsError,      // Invalid options
+  DiscoveryError            // Discovery error
+} from 'rtu-nodarbibas-api';
+
+try {
+  const schedule = await rtu.getSchedule({ ... });
+} catch (error) {
+  if (error instanceof PeriodNotFoundError) {
+    console.error(`Period not found: ${error.input}`);
+  }
+}
 ```
 
 ## Configuration
 
 ```typescript
-const client = new RTUApiClient({
-  baseUrl: 'https://nodarbibas.rtu.lv',
-  timeout: 10000,
-  userAgent: 'Custom User Agent',
-  cacheTimeout: 300000 // 5 minutes
+const rtu = new RTUSchedule({
+  timeout: 10000,                  // API timeout ms
+  cacheTimeout: 300000,            // API cache 5 min
+  discoveryCacheTimeout: 3600000   // Discovery cache 1h
 });
+
+// Cache
+rtu.clearCache();    // Clear cache
+await rtu.refresh(); // Refresh
 ```
 
-## Types
+## Low-Level API
 
-All TypeScript interfaces are exported: `SemesterEvent`, `Subject`, `Group`, `Course`, `Faculty`, `ScheduleEvent`, `Pagination`, etc.
+```typescript
+import { apiClient, htmlParser } from 'rtu-nodarbibas-api';
+
+// Direct API calls
+const events = await apiClient.fetchSemesterProgramEvents({
+  semesterProgramId: 123, year: 2025, month: 9
+});
+const subjects = await apiClient.fetchSemesterProgramSubjects(123);
+const isPublished = await apiClient.checkSemesterProgramPublished(123);
+const groups = await apiClient.findGroupsByCourse({
+  courseId: 1, semesterId: 45, programId: 123
+});
+const courses = await apiClient.findCoursesByProgram({
+  semesterId: 45, programId: 123
+});
+
+// HTML parsing
+const semesters = htmlParser.parseHtmlSemesters(html);
+const programs = htmlParser.parseHtmlPrograms(html);
+```
+
+## TypeScript Support
+
+```typescript
+import type {
+  // High-level
+  StudyPeriod, StudyProgram, StudyCourse, StudyGroup,
+  ScheduleEntry, ScheduleEntryType, GetScheduleOptions,
+
+  // Low-level
+  SemesterEvent, Subject, Group, Course, Faculty, Semester
+} from 'rtu-nodarbibas-api';
+```
 
 ## Examples
 
-### Complete Workflow: Fetch Schedule by Period, Program, Course & Group
+### Full Workflow
 
 ```typescript
-// 1. Find courses for a specific program and semester
-const courses = await apiClient.findCoursesByProgram({
-  semesterId: 45,
-  programId: 123
-});
+import { RTUSchedule } from 'rtu-nodarbibas-api';
 
-// 2. Find groups for a specific course
-const groups = await apiClient.findGroupsByCourse({
-  courseId: courses[0].id,
-  semesterId: 45,
-  programId: 123
-});
+async function getMySchedule() {
+  const rtu = new RTUSchedule();
 
-// 3. Fetch events for the selected period
-const events = await apiClient.fetchSemesterProgramEvents({
-  semesterProgramId: 123,
-  year: 2024,
-  month: 3
-});
+  // 1. Get available periods for UI dropdown
+  const periods = await rtu.getPeriods();
+  console.log('Periods:', periods.map(p => p.name));
 
-// 4. Get subjects for additional context
-const subjects = await apiClient.fetchSemesterProgramSubjects(123);
-```
+  // 2. Get programs for selected period
+  const programs = await rtu.getPrograms(periods[0].id);
+  console.log('Programs:', programs.map(p => `${p.name} (${p.code})`));
 
-### Parse HTML Content
+  // 3. Get schedule
+  const schedule = await rtu.getSchedule({
+    period: '25/26-R',
+    program: 'RDBD0',
+    course: 1,
+    group: 13
+  });
 
-```typescript
-// Parse HTML content
-const semesters = htmlParser.parseHtmlSemesters(htmlContent);
-const programs = htmlParser.parseHtmlPrograms(programHtml);
+  // 4. Analyze schedule
+  console.log(`Total: ${schedule.count} entries`);
+  console.log(`Lecturers: ${schedule.getLecturers().join(', ')}`);
+  console.log(`Subjects: ${schedule.getSubjects().map(s => s.name).join(', ')}`);
 
-// Parse schedule table
-const schedule = htmlParser.parseHtmlScheduleTable(tableHtml);
-const timeSlot = htmlParser.parseTimeSlot('09:00 - 10:30');
+  // 5. Filter and group
+  const lectures = schedule.filterByType('lecture');
+  const byWeek = schedule.groupByWeek();
+
+  for (const [week, entries] of byWeek) {
+    console.log(`Week ${week}: ${entries.length} entries`);
+  }
+
+  return schedule;
+}
 ```

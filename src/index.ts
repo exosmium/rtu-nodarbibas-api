@@ -3,6 +3,8 @@
 import { RTUApiClient } from './api-client.js';
 import { RTUHtmlParser } from './html-parser.js';
 
+// ========== LOW-LEVEL API (backward compatible) ==========
+
 // Classes
 export { RTUApiClient } from './api-client.js';
 export { RTUHtmlParser } from './html-parser.js';
@@ -29,5 +31,41 @@ export type {
   TimeSlot,
 } from './types.js';
 
+// Default instances
 export const apiClient = new RTUApiClient();
 export const htmlParser = new RTUHtmlParser();
+
+// ========== HIGH-LEVEL API (new user-friendly interface) ==========
+
+// Main class
+export { RTUSchedule, Schedule } from './schedule/index.js';
+
+// Types
+export type {
+  StudyPeriod,
+  StudyProgram,
+  StudyFaculty,
+  StudyCourse,
+  StudyGroup,
+  ScheduleEntry,
+  ScheduleEntryType,
+  ScheduleSubject,
+  GetScheduleOptions,
+  RTUScheduleConfig,
+  ScheduleMetadata,
+} from './schedule/index.js';
+
+// Error classes
+export {
+  RTUScheduleError,
+  PeriodNotFoundError,
+  ProgramNotFoundError,
+  CourseNotFoundError,
+  GroupNotFoundError,
+  ScheduleNotPublishedError,
+  DiscoveryError,
+  InvalidOptionsError,
+} from './schedule/index.js';
+
+// Advanced services (for power users)
+export { DiscoveryService, Resolver } from './schedule/index.js';
