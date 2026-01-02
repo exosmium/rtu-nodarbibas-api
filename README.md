@@ -12,11 +12,11 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/rtu-nodarbibas-api">
-    <img src="https://img.shields.io/npm/v/rtu-nodarbibas-api.svg" alt="npm version" />
+  <a href="https://www.npmjs.com/package/rtu-schedule-unofficial-client">
+    <img src="https://img.shields.io/npm/v/rtu-schedule-unofficial-client.svg" alt="npm version" />
   </a>
-  <a href="https://www.npmjs.com/package/rtu-nodarbibas-api">
-    <img src="https://img.shields.io/npm/dm/rtu-nodarbibas-api.svg" alt="npm downloads" />
+  <a href="https://www.npmjs.com/package/rtu-schedule-unofficial-client">
+    <img src="https://img.shields.io/npm/dm/rtu-schedule-unofficial-client.svg" alt="npm downloads" />
   </a>
   <img src="https://img.shields.io/badge/lang-en-blue.svg" alt="English" />
   <a href="README.lv.md">
@@ -35,13 +35,13 @@
 ## Installation
 
 ```bash
-npm install rtu-nodarbibas-api
+npm install rtu-schedule-unofficial-client
 ```
 
 ## Quick Start
 
 ```typescript
-import { RTUSchedule } from 'rtu-nodarbibas-api';
+import { RTUSchedule } from 'rtu-schedule-unofficial-client';
 
 const rtu = new RTUSchedule();
 
@@ -227,7 +227,7 @@ import {
   GroupNotFoundError,       // Group not found
   InvalidOptionsError,      // Invalid options
   DiscoveryError            // Discovery error
-} from 'rtu-nodarbibas-api';
+} from 'rtu-schedule-unofficial-client';
 
 try {
   const schedule = await rtu.getSchedule({ ... });
@@ -255,7 +255,7 @@ await rtu.refresh(); // Refresh
 ## Low-Level API
 
 ```typescript
-import { apiClient, htmlParser } from 'rtu-nodarbibas-api';
+import { apiClient, htmlParser } from 'rtu-schedule-unofficial-client';
 
 // Direct API calls
 const events = await apiClient.fetchSemesterProgramEvents({
@@ -285,7 +285,7 @@ import type {
 
   // Low-level
   SemesterEvent, Subject, Group, Course, Faculty, Semester
-} from 'rtu-nodarbibas-api';
+} from 'rtu-schedule-unofficial-client';
 ```
 
 ## Examples
@@ -293,7 +293,7 @@ import type {
 ### Full Workflow
 
 ```typescript
-import { RTUSchedule } from 'rtu-nodarbibas-api';
+import { RTUSchedule } from 'rtu-schedule-unofficial-client';
 
 async function getMySchedule() {
   const rtu = new RTUSchedule();

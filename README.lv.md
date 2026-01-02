@@ -12,11 +12,11 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/rtu-nodarbibas-api">
-    <img src="https://img.shields.io/npm/v/rtu-nodarbibas-api.svg" alt="npm versija" />
+  <a href="https://www.npmjs.com/package/rtu-schedule-unofficial-client">
+    <img src="https://img.shields.io/npm/v/rtu-schedule-unofficial-client.svg" alt="npm versija" />
   </a>
-  <a href="https://www.npmjs.com/package/rtu-nodarbibas-api">
-    <img src="https://img.shields.io/npm/dm/rtu-nodarbibas-api.svg" alt="npm lejupielādes" />
+  <a href="https://www.npmjs.com/package/rtu-schedule-unofficial-client">
+    <img src="https://img.shields.io/npm/dm/rtu-schedule-unofficial-client.svg" alt="npm lejupielādes" />
   </a>
   <a href="README.md">
     <img src="https://img.shields.io/badge/lang-en-blue.svg" alt="English" />
@@ -35,13 +35,13 @@
 ## Instalācija
 
 ```bash
-npm install rtu-nodarbibas-api
+npm install rtu-schedule-unofficial-client
 ```
 
 ## Ātrais sākums
 
 ```typescript
-import { RTUSchedule } from 'rtu-nodarbibas-api';
+import { RTUSchedule } from 'rtu-schedule-unofficial-client';
 
 const rtu = new RTUSchedule();
 
@@ -227,7 +227,7 @@ import {
   GroupNotFoundError,       // Grupa nav atrasta
   InvalidOptionsError,      // Nederīgi parametri
   DiscoveryError            // Atklāšanas kļūda
-} from 'rtu-nodarbibas-api';
+} from 'rtu-schedule-unofficial-client';
 
 try {
   const schedule = await rtu.getSchedule({ ... });
@@ -255,7 +255,7 @@ await rtu.refresh(); // Atsvaidzināt
 ## Zemā līmeņa API
 
 ```typescript
-import { apiClient, htmlParser } from 'rtu-nodarbibas-api';
+import { apiClient, htmlParser } from 'rtu-schedule-unofficial-client';
 
 // Tiešie API izsaukumi
 const events = await apiClient.fetchSemesterProgramEvents({
@@ -285,7 +285,7 @@ import type {
 
   // Zema līmeņa
   SemesterEvent, Subject, Group, Course, Faculty, Semester
-} from 'rtu-nodarbibas-api';
+} from 'rtu-schedule-unofficial-client';
 ```
 
 ## Piemēri
@@ -293,7 +293,7 @@ import type {
 ### Pilna darbplūsma
 
 ```typescript
-import { RTUSchedule } from 'rtu-nodarbibas-api';
+import { RTUSchedule } from 'rtu-schedule-unofficial-client';
 
 async function getMySchedule() {
   const rtu = new RTUSchedule();
