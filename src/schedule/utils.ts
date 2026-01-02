@@ -308,7 +308,8 @@ export function parseProgramName(fullName: string): string {
  * Extract course number from course name
  * "1. kurss" -> 1
  */
-export function parseCourseNumber(name: string): number {
+export function parseCourseNumber(name: string | undefined): number {
+  if (!name) return 0;
   const match = name.match(/(\d+)/);
   return match?.[1] !== undefined ? parseInt(match[1], 10) : 0;
 }
@@ -317,7 +318,8 @@ export function parseCourseNumber(name: string): number {
  * Extract group number from group name
  * "13. grupa" -> 13, "DBI-13" -> 13
  */
-export function parseGroupNumber(name: string): number {
+export function parseGroupNumber(name: string | undefined): number {
+  if (!name) return 0;
   const match = name.match(/(\d+)/);
   return match?.[1] !== undefined ? parseInt(match[1], 10) : 0;
 }
