@@ -261,7 +261,9 @@ export function transformToScheduleEntry(event: SemesterEvent): ScheduleEntry {
   // Extract subject name from eventTempName (e.g., "Lekc. Subject, Lecturer" -> "Subject")
   // Handles multiple prefixes: "Lekc. Pr. d. Subject, Lecturer" -> "Subject"
   // Matches abbreviations: 1-10 non-space/comma chars + period + space (handles "Lab.d.")
-  const subjectMatch = event.eventTempName.match(/^(?:[^,\s]{1,10}\.\s+)+([^,]+)/);
+  const subjectMatch = event.eventTempName.match(
+    /^(?:[^,\s]{1,10}\.\s+)+([^,]+)/
+  );
   const subjectName = subjectMatch?.[1]?.trim() ?? event.eventTempName;
 
   const locationParsed = parseLocation(event.roomInfoText);
