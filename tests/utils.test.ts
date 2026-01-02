@@ -765,8 +765,8 @@ describe('transformToScheduleEntry', () => {
       eventDateId: 1,
       eventId: 100,
       statusId: 1,
-      eventTempName: 'Lekcija Programmēšana, Dr. Jānis Bērziņš',
-      eventTempNameEn: 'Lecture Programming, Dr. Jānis Bērziņš',
+      eventTempName: 'Lekc. Programmēšana, Dr. Jānis Bērziņš',
+      eventTempNameEn: 'Lect. Programming, Dr. Jānis Bērziņš',
       roomInfoText: 'A-101',
       roomInfoTextEn: 'A-101',
       lecturerInfoText: 'Dr. Jānis Bērziņš',
@@ -797,7 +797,7 @@ describe('transformToScheduleEntry', () => {
     expect(entry.lecturer).toBe('Dr. Jānis Bērziņš');
     expect(entry.lecturers).toEqual(['Dr. Jānis Bērziņš']);
     expect(entry.type).toBe('lecture');
-    expect(entry.typeRaw).toBe('Lekcija');
+    expect(entry.typeRaw).toBe('Lekc');
     expect(entry.dayOfWeek).toBe(1); // Monday
     expect(entry.dayName).toBe('Pirmdiena');
     expect(entry._raw).toBe(event);
@@ -808,8 +808,8 @@ describe('transformToScheduleEntry', () => {
       eventDateId: 2,
       eventId: 101,
       statusId: 1,
-      eventTempName: 'Seminārs Matemātika, Dr. Smith, Dr. Johnson',
-      eventTempNameEn: 'Seminar Mathematics, Dr. Smith, Dr. Johnson',
+      eventTempName: 'Sem. Matemātika, Dr. Smith, Dr. Johnson',
+      eventTempNameEn: 'Sem. Mathematics, Dr. Smith, Dr. Johnson',
       roomInfoText: 'B-202',
       roomInfoTextEn: 'B-202',
       lecturerInfoText: 'Dr. Smith, Dr. Johnson',
@@ -837,8 +837,8 @@ describe('transformToScheduleEntry', () => {
       eventDateId: 3,
       eventId: 102,
       statusId: 1,
-      eventTempName: 'Lekcija Online Lecture, Prof. Online',
-      eventTempNameEn: 'Lecture Online Lecture, Prof. Online',
+      eventTempName: 'Lekc. Online Lecture, Prof. Online',
+      eventTempNameEn: 'Lect. Online Lecture, Prof. Online',
       roomInfoText: '',
       roomInfoTextEn: '',
       lecturerInfoText: 'Prof. Online',
@@ -868,8 +868,8 @@ describe('transformToScheduleEntry', () => {
       eventDateId: 4,
       eventId: 103,
       statusId: 1,
-      eventTempName: 'Lekcija Test, Test',
-      eventTempNameEn: 'Lecture Test, Test',
+      eventTempName: 'Lekc. Test, Test',
+      eventTempNameEn: 'Lect. Test, Test',
       roomInfoText: 'A-1',
       roomInfoTextEn: 'A-1',
       lecturerInfoText: 'Test',

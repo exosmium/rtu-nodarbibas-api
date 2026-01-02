@@ -257,8 +257,8 @@ describe('Schedule Utils (Pure Functions)', () => {
         eventDateId: 1,
         eventId: 100,
         statusId: 1,
-        eventTempName: 'Lekcija Programmēšana, Dr. Jānis Bērziņš',
-        eventTempNameEn: 'Lecture Programming, Dr. Jānis Bērziņš',
+        eventTempName: 'Lekc. Programmēšana, Dr. Jānis Bērziņš',
+        eventTempNameEn: 'Lect. Programming, Dr. Jānis Bērziņš',
         roomInfoText: 'A-101',
         roomInfoTextEn: 'A-101',
         lecturerInfoText: 'Dr. Jānis Bērziņš',
@@ -288,6 +288,7 @@ describe('Schedule Utils (Pure Functions)', () => {
       expect(entry.room).toBe('101');
       expect(entry.lecturer).toBe('Dr. Jānis Bērziņš');
       expect(entry.type).toBe('lecture');
+      expect(entry.typeRaw).toBe('Lekc');
     });
   });
 });
