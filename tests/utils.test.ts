@@ -891,6 +891,261 @@ describe('transformToScheduleEntry', () => {
 
     expect(entry.weekNumber).toBe(2);
   });
+
+  // Subject name extraction with multiple prefixes
+  describe('subject name extraction with prefixes', () => {
+    it('should extract subject name with single type prefix (backward compatibility)', () => {
+      const event: SemesterEvent = {
+        eventDateId: 5,
+        eventId: 104,
+        statusId: 1,
+        eventTempName: 'Lekc. Programmēšana, Dr. Jānis Bērziņš',
+        eventTempNameEn: 'Lect. Programming, Dr. Jānis Bērziņš',
+        roomInfoText: 'A-101',
+        roomInfoTextEn: 'A-101',
+        lecturerInfoText: 'Dr. Jānis Bērziņš',
+        lecturerInfoTextEn: 'Dr. Jānis Bērziņš',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 1,
+          roomNumber: '101',
+          roomName: 'A-101',
+          roomNameEN: 'A-101',
+        },
+        eventDate: new Date('2025-09-01').getTime(),
+        customStart: { hour: 9, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 10, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Programmēšana');
+    });
+
+    it('should extract subject name with "Pr. d." prefix after type', () => {
+      const event: SemesterEvent = {
+        eventDateId: 6,
+        eventId: 105,
+        statusId: 1,
+        eventTempName: 'Lekc. Pr. d. Civilā aizsardzība, Docent',
+        eventTempNameEn: 'Lect. Pr. work Civil defense, Docent',
+        roomInfoText: 'B-202',
+        roomInfoTextEn: 'B-202',
+        lecturerInfoText: 'Docent',
+        lecturerInfoTextEn: 'Docent',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 2,
+          roomNumber: '202',
+          roomName: 'B-202',
+          roomNameEN: 'B-202',
+        },
+        eventDate: new Date('2025-09-02').getTime(),
+        customStart: { hour: 11, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 12, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Civilā aizsardzība');
+    });
+
+    it('should extract subject name with "pap." prefix after type', () => {
+      const event: SemesterEvent = {
+        eventDateId: 7,
+        eventId: 106,
+        statusId: 1,
+        eventTempName: 'Lekc. pap. Datoru tīkli, Teacher',
+        eventTempNameEn: 'Lect. additional Computer networks, Teacher',
+        roomInfoText: 'C-303',
+        roomInfoTextEn: 'C-303',
+        lecturerInfoText: 'Teacher',
+        lecturerInfoTextEn: 'Teacher',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 3,
+          roomNumber: '303',
+          roomName: 'C-303',
+          roomNameEN: 'C-303',
+        },
+        eventDate: new Date('2025-09-03').getTime(),
+        customStart: { hour: 14, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 15, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Datoru tīkli');
+    });
+
+    it('should extract subject name with "d." prefix after type', () => {
+      const event: SemesterEvent = {
+        eventDateId: 8,
+        eventId: 107,
+        statusId: 1,
+        eventTempName: 'Lekc. d. Matemātika, Professor',
+        eventTempNameEn: 'Lect. part Mathematics, Professor',
+        roomInfoText: 'D-404',
+        roomInfoTextEn: 'D-404',
+        lecturerInfoText: 'Professor',
+        lecturerInfoTextEn: 'Professor',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 4,
+          roomNumber: '404',
+          roomName: 'D-404',
+          roomNameEN: 'D-404',
+        },
+        eventDate: new Date('2025-09-04').getTime(),
+        customStart: { hour: 9, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 10, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Matemātika');
+    });
+
+    it('should extract subject name with multiple prefixes', () => {
+      const event: SemesterEvent = {
+        eventDateId: 9,
+        eventId: 108,
+        statusId: 1,
+        eventTempName: 'Lab.d. Pr. d. pap. Fizika, Lab Assistant',
+        eventTempNameEn: 'Lab. Pr. work additional Physics, Lab Assistant',
+        roomInfoText: 'E-505',
+        roomInfoTextEn: 'E-505',
+        lecturerInfoText: 'Lab Assistant',
+        lecturerInfoTextEn: 'Lab Assistant',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 5,
+          roomNumber: '505',
+          roomName: 'E-505',
+          roomNameEN: 'E-505',
+        },
+        eventDate: new Date('2025-09-05').getTime(),
+        customStart: { hour: 11, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 12, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Fizika');
+    });
+
+    it('should handle Lab.d. type with additional prefixes', () => {
+      const event: SemesterEvent = {
+        eventDateId: 10,
+        eventId: 109,
+        statusId: 1,
+        eventTempName: 'Lab.d. pap. Ķīmija, Lab Teacher',
+        eventTempNameEn: 'Lab. work additional Chemistry, Lab Teacher',
+        roomInfoText: 'F-606',
+        roomInfoTextEn: 'F-606',
+        lecturerInfoText: 'Lab Teacher',
+        lecturerInfoTextEn: 'Lab Teacher',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 6,
+          roomNumber: '606',
+          roomName: 'F-606',
+          roomNameEN: 'F-606',
+        },
+        eventDate: new Date('2025-09-06').getTime(),
+        customStart: { hour: 13, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 14, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Ķīmija');
+    });
+
+    it('should handle eventTempName without comma', () => {
+      const event: SemesterEvent = {
+        eventDateId: 11,
+        eventId: 110,
+        statusId: 1,
+        eventTempName: 'Lekc. Programmēšana',
+        eventTempNameEn: 'Lect. Programming',
+        roomInfoText: 'G-707',
+        roomInfoTextEn: 'G-707',
+        lecturerInfoText: '',
+        lecturerInfoTextEn: '',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 7,
+          roomNumber: '707',
+          roomName: 'G-707',
+          roomNameEN: 'G-707',
+        },
+        eventDate: new Date('2025-09-07').getTime(),
+        customStart: { hour: 10, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 11, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Programmēšana');
+    });
+
+    it('should handle empty eventTempName gracefully', () => {
+      const event: SemesterEvent = {
+        eventDateId: 12,
+        eventId: 111,
+        statusId: 1,
+        eventTempName: '',
+        eventTempNameEn: '',
+        roomInfoText: 'H-808',
+        roomInfoTextEn: 'H-808',
+        lecturerInfoText: 'Teacher',
+        lecturerInfoTextEn: 'Teacher',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 8,
+          roomNumber: '808',
+          roomName: 'H-808',
+          roomNameEN: 'H-808',
+        },
+        eventDate: new Date('2025-09-08').getTime(),
+        customStart: { hour: 15, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 16, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('');
+    });
+
+    it('should handle subject names containing periods', () => {
+      const event: SemesterEvent = {
+        eventDateId: 13,
+        eventId: 112,
+        statusId: 1,
+        eventTempName: 'Sem. Web 2.0 tehnoloģijas, Lecturer',
+        eventTempNameEn: 'Sem. Web 2.0 technologies, Lecturer',
+        roomInfoText: 'I-909',
+        roomInfoTextEn: 'I-909',
+        lecturerInfoText: 'Lecturer',
+        lecturerInfoTextEn: 'Lecturer',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 9,
+          roomNumber: '909',
+          roomName: 'I-909',
+          roomNameEN: 'I-909',
+        },
+        eventDate: new Date('2025-09-09').getTime(),
+        customStart: { hour: 11, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 12, minute: 30, second: 0, nano: 0 },
+      };
+
+      const entry = transformToScheduleEntry(event);
+      expect(entry.subject.name).toBe('Web 2.0 tehnoloģijas');
+    });
+  });
 });
 
 // =====================================================
