@@ -18,6 +18,7 @@ const DAY_NAMES: Record<number, string> = {
  * Type mappings from Latvian to enum
  */
 const TYPE_MAPPINGS: Record<string, ScheduleEntryType> = {
+  // Full names
   lekcija: 'lecture',
   lekcijas: 'lecture',
   'praktiskais darbs': 'practical',
@@ -36,6 +37,23 @@ const TYPE_MAPPINGS: Record<string, ScheduleEntryType> = {
   eksamens: 'exam',
   ieskaite: 'test',
   pārbaudījums: 'test',
+  // Abbreviations from API (eventTempName)
+  'lekc.': 'lecture',
+  lekc: 'lecture',
+  'pr.d.': 'practical',
+  'pr.d': 'practical',
+  'lab.d.': 'lab',
+  'lab.d': 'lab',
+  'lab.': 'lab',
+  lab: 'lab',
+  'sem.': 'seminar',
+  sem: 'seminar',
+  'kons.': 'consultation',
+  kons: 'consultation',
+  'eksām.': 'exam',
+  'eksam.': 'exam',
+  eksam: 'exam',
+  eksām: 'exam',
 };
 
 /**
@@ -212,25 +230,48 @@ export function extractTime(isoDateTime: string): string {
  * Transform raw SemesterEvent to ScheduleEntry
  */
 export function transformToScheduleEntry(event: SemesterEvent): ScheduleEntry {
-  const startDateTime = new Date(event.start);
-  const endDateTime = new Date(event.end);
-  const date = new Date(startDateTime);
+  // Create date from eventDate timestamp
+  const date = new Date(event.eventDate);
   date.setHours(0, 0, 0, 0);
 
-  const startTime = extractTime(event.start);
-  const endTime = extractTime(event.end);
+  // Create DateTime objects from eventDate + customStart/customEnd
+  const startDateTime = new Date(event.eventDate);
+  startDateTime.setHours(
+    event.customStart.hour,
+    event.customStart.minute,
+    event.customStart.second
+  );
+
+  const endDateTime = new Date(event.eventDate);
+  endDateTime.setHours(
+    event.customEnd.hour,
+    event.customEnd.minute,
+    event.customEnd.second
+  );
+
+  // Format times as HH:MM
+  const startTime = `${String(event.customStart.hour).padStart(2, '0')}:${String(event.customStart.minute).padStart(2, '0')}`;
+  const endTime = `${String(event.customEnd.hour).padStart(2, '0')}:${String(event.customEnd.minute).padStart(2, '0')}`;
   const durationMinutes = calculateDuration(startTime, endTime);
 
-  const locationParsed = parseLocation(event.location);
-  const lecturers = parseLecturers(event.lecturer);
-  const groups = parseGroups(event.group);
+  // Parse type from eventTempName (e.g., "Lekc. Subject, Lecturer" -> "Lekc.")
+  const typeMatch = event.eventTempName.match(/^([^.]+)\./);
+  const typeRaw = typeMatch?.[1]?.trim() ?? '';
+
+  // Extract subject name from eventTempName (e.g., "Lekc. Subject, Lecturer" -> "Subject")
+  const subjectMatch = event.eventTempName.match(/^[^.]+\.\s*([^,]+)/);
+  const subjectName = subjectMatch?.[1]?.trim() ?? event.eventTempName;
+
+  const locationParsed = parseLocation(event.roomInfoText);
+  const lecturers = parseLecturers(event.lecturerInfoText);
+  const groups: string[] = []; // API doesn't provide group info in events
   const dayOfWeek = getDayOfWeek(date);
 
   return {
-    id: event.id,
+    id: event.eventDateId,
     subject: {
-      name: event.title,
-      code: event.course,
+      name: subjectName,
+      code: '', // API doesn't provide subject code in events
     },
     date,
     startTime,
@@ -238,14 +279,14 @@ export function transformToScheduleEntry(event: SemesterEvent): ScheduleEntry {
     startDateTime,
     endDateTime,
     durationMinutes,
-    location: event.location,
+    location: event.roomInfoText,
     building: locationParsed.building,
     room: locationParsed.room,
-    lecturer: event.lecturer,
+    lecturer: event.lecturerInfoText,
     lecturers,
-    type: parseEntryType(event.type),
-    typeRaw: event.type,
-    group: event.group,
+    type: parseEntryType(typeRaw),
+    typeRaw,
+    group: '', // API doesn't provide group in events
     groups,
     weekNumber: getWeekNumber(date),
     dayOfWeek,

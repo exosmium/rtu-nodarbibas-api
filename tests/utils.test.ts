@@ -762,22 +762,32 @@ describe('extractTime', () => {
 describe('transformToScheduleEntry', () => {
   it('should transform SemesterEvent to ScheduleEntry', () => {
     const event: SemesterEvent = {
-      id: 1,
-      title: 'Programmēšana',
-      start: '2025-09-01T09:00:00',
-      end: '2025-09-01T10:30:00',
-      location: 'A-101',
-      lecturer: 'Dr. Jānis Bērziņš',
-      type: 'Lekcija',
-      group: 'DBI-1',
-      course: 'PRG001',
+      eventDateId: 1,
+      eventId: 100,
+      statusId: 1,
+      eventTempName: 'Lekcija Programmēšana, Dr. Jānis Bērziņš',
+      eventTempNameEn: 'Lecture Programming, Dr. Jānis Bērziņš',
+      roomInfoText: 'A-101',
+      roomInfoTextEn: 'A-101',
+      lecturerInfoText: 'Dr. Jānis Bērziņš',
+      lecturerInfoTextEn: 'Dr. Jānis Bērziņš',
+      programInfoText: null,
+      programInfoTextEn: null,
+      room: {
+        roomId: 1,
+        roomNumber: '101',
+        roomName: 'A-101',
+        roomNameEN: 'A-101',
+      },
+      eventDate: new Date('2025-09-01').getTime(),
+      customStart: { hour: 9, minute: 0, second: 0, nano: 0 },
+      customEnd: { hour: 10, minute: 30, second: 0, nano: 0 },
     };
 
     const entry = transformToScheduleEntry(event);
 
     expect(entry.id).toBe(1);
     expect(entry.subject.name).toBe('Programmēšana');
-    expect(entry.subject.code).toBe('PRG001');
     expect(entry.startTime).toBe('09:00');
     expect(entry.endTime).toBe('10:30');
     expect(entry.durationMinutes).toBe(90);
@@ -788,8 +798,6 @@ describe('transformToScheduleEntry', () => {
     expect(entry.lecturers).toEqual(['Dr. Jānis Bērziņš']);
     expect(entry.type).toBe('lecture');
     expect(entry.typeRaw).toBe('Lekcija');
-    expect(entry.group).toBe('DBI-1');
-    expect(entry.groups).toEqual(['DBI-1']);
     expect(entry.dayOfWeek).toBe(1); // Monday
     expect(entry.dayName).toBe('Pirmdiena');
     expect(entry._raw).toBe(event);
@@ -797,34 +805,55 @@ describe('transformToScheduleEntry', () => {
 
   it('should handle multiple lecturers', () => {
     const event: SemesterEvent = {
-      id: 2,
-      title: 'Matemātika',
-      start: '2025-09-02T11:00:00',
-      end: '2025-09-02T12:30:00',
-      location: 'B-202',
-      lecturer: 'Dr. Smith, Dr. Johnson',
-      type: 'Seminārs',
-      group: 'DBI-1, DBI-2',
-      course: 'MAT001',
+      eventDateId: 2,
+      eventId: 101,
+      statusId: 1,
+      eventTempName: 'Seminārs Matemātika, Dr. Smith, Dr. Johnson',
+      eventTempNameEn: 'Seminar Mathematics, Dr. Smith, Dr. Johnson',
+      roomInfoText: 'B-202',
+      roomInfoTextEn: 'B-202',
+      lecturerInfoText: 'Dr. Smith, Dr. Johnson',
+      lecturerInfoTextEn: 'Dr. Smith, Dr. Johnson',
+      programInfoText: null,
+      programInfoTextEn: null,
+      room: {
+        roomId: 2,
+        roomNumber: '202',
+        roomName: 'B-202',
+        roomNameEN: 'B-202',
+      },
+      eventDate: new Date('2025-09-02').getTime(),
+      customStart: { hour: 11, minute: 0, second: 0, nano: 0 },
+      customEnd: { hour: 12, minute: 30, second: 0, nano: 0 },
     };
 
     const entry = transformToScheduleEntry(event);
 
     expect(entry.lecturers).toEqual(['Dr. Smith', 'Dr. Johnson']);
-    expect(entry.groups).toEqual(['DBI-1', 'DBI-2']);
   });
 
   it('should handle empty location', () => {
     const event: SemesterEvent = {
-      id: 3,
-      title: 'Online Lecture',
-      start: '2025-09-03T14:00:00',
-      end: '2025-09-03T15:30:00',
-      location: '',
-      lecturer: 'Prof. Online',
-      type: 'Lekcija',
-      group: 'ALL',
-      course: 'ONL001',
+      eventDateId: 3,
+      eventId: 102,
+      statusId: 1,
+      eventTempName: 'Lekcija Online Lecture, Prof. Online',
+      eventTempNameEn: 'Lecture Online Lecture, Prof. Online',
+      roomInfoText: '',
+      roomInfoTextEn: '',
+      lecturerInfoText: 'Prof. Online',
+      lecturerInfoTextEn: 'Prof. Online',
+      programInfoText: null,
+      programInfoTextEn: null,
+      room: {
+        roomId: 0,
+        roomNumber: '',
+        roomName: '',
+        roomNameEN: '',
+      },
+      eventDate: new Date('2025-09-03').getTime(),
+      customStart: { hour: 14, minute: 0, second: 0, nano: 0 },
+      customEnd: { hour: 15, minute: 30, second: 0, nano: 0 },
     };
 
     const entry = transformToScheduleEntry(event);
@@ -836,15 +865,26 @@ describe('transformToScheduleEntry', () => {
 
   it('should calculate correct week number', () => {
     const event: SemesterEvent = {
-      id: 4,
-      title: 'Test',
-      start: '2025-01-06T09:00:00',
-      end: '2025-01-06T10:00:00',
-      location: 'A-1',
-      lecturer: 'Test',
-      type: 'Lekcija',
-      group: 'G1',
-      course: 'T001',
+      eventDateId: 4,
+      eventId: 103,
+      statusId: 1,
+      eventTempName: 'Lekcija Test, Test',
+      eventTempNameEn: 'Lecture Test, Test',
+      roomInfoText: 'A-1',
+      roomInfoTextEn: 'A-1',
+      lecturerInfoText: 'Test',
+      lecturerInfoTextEn: 'Test',
+      programInfoText: null,
+      programInfoTextEn: null,
+      room: {
+        roomId: 1,
+        roomNumber: '1',
+        roomName: 'A-1',
+        roomNameEN: 'A-1',
+      },
+      eventDate: new Date('2025-01-06').getTime(),
+      customStart: { hour: 9, minute: 0, second: 0, nano: 0 },
+      customEnd: { hour: 10, minute: 0, second: 0, nano: 0 },
     };
 
     const entry = transformToScheduleEntry(event);

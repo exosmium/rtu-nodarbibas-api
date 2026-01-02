@@ -1,23 +1,44 @@
 // API Response Types
 export interface SemesterEvent {
-  id: number;
-  title: string;
-  start: string;
-  end: string;
-  location: string;
-  lecturer: string;
-  type: string;
-  group: string;
-  course: string;
+  eventDateId: number;
+  eventId: number;
+  statusId: number;
+  eventTempName: string;
+  eventTempNameEn: string;
+  roomInfoText: string;
+  roomInfoTextEn: string;
+  lecturerInfoText: string;
+  lecturerInfoTextEn: string;
+  programInfoText: string | null;
+  programInfoTextEn: string | null;
+  room: {
+    roomId: number;
+    roomNumber: string;
+    roomName: string;
+    roomNameEN: string;
+  };
+  eventDate: number; // Unix timestamp in milliseconds
+  customStart: {
+    hour: number;
+    minute: number;
+    second: number;
+    nano: number;
+  };
+  customEnd: {
+    hour: number;
+    minute: number;
+    second: number;
+    nano: number;
+  };
 }
 
 export interface Subject {
-  id: number;
-  name: string;
+  subjectId: number;
+  titleLV: string;
+  titleEN: string;
   code: string;
-  credits: number;
-  semester: number;
-  type: string;
+  part: number;
+  deletedDate: string | null;
 }
 
 export interface Group {

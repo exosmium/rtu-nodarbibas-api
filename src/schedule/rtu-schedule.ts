@@ -345,8 +345,8 @@ export class RTUSchedule {
     // Remove duplicates by event ID
     const uniqueEvents = new Map<number, SemesterEvent>();
     for (const event of allEvents) {
-      if (!uniqueEvents.has(event.id)) {
-        uniqueEvents.set(event.id, event);
+      if (!uniqueEvents.has(event.eventDateId)) {
+        uniqueEvents.set(event.eventDateId, event);
       }
     }
 

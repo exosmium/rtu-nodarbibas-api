@@ -254,22 +254,32 @@ describe('Schedule Utils (Pure Functions)', () => {
   describe('transformToScheduleEntry', () => {
     it('should transform SemesterEvent to ScheduleEntry', () => {
       const event: SemesterEvent = {
-        id: 1,
-        title: 'Programmēšana',
-        start: '2025-09-01T09:00:00',
-        end: '2025-09-01T10:30:00',
-        location: 'A-101',
-        lecturer: 'Dr. Jānis Bērziņš',
-        type: 'Lekcija',
-        group: 'DBI-1',
-        course: 'PRG001',
+        eventDateId: 1,
+        eventId: 100,
+        statusId: 1,
+        eventTempName: 'Lekcija Programmēšana, Dr. Jānis Bērziņš',
+        eventTempNameEn: 'Lecture Programming, Dr. Jānis Bērziņš',
+        roomInfoText: 'A-101',
+        roomInfoTextEn: 'A-101',
+        lecturerInfoText: 'Dr. Jānis Bērziņš',
+        lecturerInfoTextEn: 'Dr. Jānis Bērziņš',
+        programInfoText: null,
+        programInfoTextEn: null,
+        room: {
+          roomId: 1,
+          roomNumber: '101',
+          roomName: 'A-101',
+          roomNameEN: 'A-101',
+        },
+        eventDate: new Date('2025-09-01').getTime(),
+        customStart: { hour: 9, minute: 0, second: 0, nano: 0 },
+        customEnd: { hour: 10, minute: 30, second: 0, nano: 0 },
       };
 
       const entry = transformToScheduleEntry(event);
 
       expect(entry.id).toBe(1);
       expect(entry.subject.name).toBe('Programmēšana');
-      expect(entry.subject.code).toBe('PRG001');
       expect(entry.startTime).toBe('09:00');
       expect(entry.endTime).toBe('10:30');
       expect(entry.durationMinutes).toBe(90);
@@ -278,7 +288,6 @@ describe('Schedule Utils (Pure Functions)', () => {
       expect(entry.room).toBe('101');
       expect(entry.lecturer).toBe('Dr. Jānis Bērziņš');
       expect(entry.type).toBe('lecture');
-      expect(entry.group).toBe('DBI-1');
     });
   });
 });
