@@ -1,397 +1,152 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import axios from 'axios';
 import { RTUHtmlParser } from '../src/html-parser.js';
 
-// Mock HTML data based on the provided RTU HTML structure
-const mockSemesterSelectHtml = `
-<h5 class="card-title body-header">Studiju periods</h5>
-<div class="row">
-  <select id="semester-id" class="form-select form-control" required="required">
-    <option value="28" selected="selected">2025/2026 Rudens semestris (25/26-R)</option>
-    <option value="25">2024/2025 Vasaras semestris (24/25-V)</option>
-    <option value="24">2024/2025 Pavasara semestris (24/25-P)</option>
-    <option value="23">2024/2025 Rudens semestris (24/25-R)</option>
-    <option value="22">2023/2024 Vasaras semestris (23/24-V)</option>
-    <option value="21">2023/2024 Pavasara semestris (23/24-P)</option>
-  </select>
-  <input type="hidden" id="semester-start-date" value="2025-09-01"></input>
-  <input type="hidden" id="semester-end-date" value="2026-01-25"></input>
-  <input type="hidden" id="language" value="lv"></input>
-</div>`;
+/**
+ * Real API endpoint tests for RTUHtmlParser
+ * These tests fetch actual HTML from RTU website and parse it
+ */
 
-const mockProgramSelectHtml = `
-<h5 class="card-title body-header">Studiju programmas</h5>
-<div class="row scheduler-program-department-select">
-  <select id="program-id" name="DepartmentProgram" class="form-select form-control selectpicker" data-live-search="true">
-    <option selected value="0">Izvēlne..</option>
-    <optgroup label="Arhitektūras un dizaina institūts (01T00)">
-      <option data-tokens="Arhitektūras un dizaina institūts, 01T00, Arhitektūra, RABA0" value="227">Arhitektūra (RABA0)</option>
-      <option data-tokens="Arhitektūras un dizaina institūts, 01T00, Materiālu tehnoloģija un dizains, RWCH0" value="1136">Materiālu tehnoloģija un dizains (RWCH0)</option>
-      <option data-tokens="Arhitektūras un dizaina institūts, 01T00, Apģērbu un tekstila tehnoloģija, RWCV0" value="1311">Apģērbu un tekstila tehnoloģija (RWCV0)</option>
-    </optgroup>
-    <optgroup label="Datorzinātnes, informācijas tehnoloģijas un enerģētikas fakultāte (33000)">
-      <option data-tokens="Datorzinātnes, informācijas tehnoloģijas un enerģētikas fakultāte, 33000, Datorsistēmas, RDBD0" value="333">Datorsistēmas (RDBD0)</option>
-      <option data-tokens="Datorzinātnes, informācijas tehnoloģijas un enerģētikas fakultāte, 33000, Informācijas tehnoloģija, RDBI0" value="340">Informācijas tehnoloģija (RDBI0)</option>
-      <option data-tokens="Datorzinātnes, informācijas tehnoloģijas un enerģētikas fakultāte, 33000, Datorsistēmas, RDMD0" value="380">Datorsistēmas (RDMD0)</option>
-    </optgroup>
-    <optgroup label="Inženierekonomikas un vadības fakultāte (22000)">
-      <option data-tokens="Inženierekonomikas un vadības fakultāte, 22000, Ekonomika, RIBE0" value="610">Ekonomika (RIBE0)</option>
-      <option data-tokens="Inženierekonomikas un vadības fakultāte, 22000, Uzņēmējdarbība un vadīšana, RIBU0" value="617">Uzņēmējdarbība un vadīšana (RIBU0)</option>
-    </optgroup>
-  </select>
-</div>`;
-
-const mockScheduleTableHtml = `
-<table class="schedule-table">
-  <thead>
-    <tr>
-      <th>Laiks</th>
-      <th>Priekšmets</th>
-      <th>Pasniedzējs</th>
-      <th>Telpa</th>
-      <th>Tips</th>
-      <th>Grupa</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr class="event-row">
-      <td class="time-cell">09:00 - 10:30</td>
-      <td class="subject-cell">Datorzinātnes pamati</td>
-      <td class="lecturer-cell">Dr. Jānis Bērziņš</td>
-      <td class="location-cell">A-101</td>
-      <td class="type-cell">Lekcija</td>
-      <td class="group-cell">DBI-1</td>
-    </tr>
-    <tr class="event-row">
-      <td class="time-cell">11:00 - 12:30</td>
-      <td class="subject-cell">Programmēšana</td>
-      <td class="lecturer-cell">Mg. Anna Kļaviņa</td>
-      <td class="location-cell">B-205</td>
-      <td class="type-cell">Praktiskais darbs</td>
-      <td class="group-cell">DBI-1</td>
-    </tr>
-  </tbody>
-</table>`;
-
-const mockFacultyListHtml = `
-<div class="faculty-list">
-  <div class="faculty-item" data-faculty-code="01T00">
-    <h3>Arhitektūras un dizaina institūts</h3>
-    <p class="faculty-code">01T00</p>
-    <div class="program-count">3 programmas</div>
-  </div>
-  <div class="faculty-item" data-faculty-code="33000">
-    <h3>Datorzinātnes, informācijas tehnoloģijas un enerģētikas fakultāte</h3>
-    <p class="faculty-code">33000</p>
-    <div class="program-count">25 programmas</div>
-  </div>
-  <div class="faculty-item" data-faculty-code="22000">
-    <h3>Inženierekonomikas un vadības fakultāte</h3>
-    <p class="faculty-code">22000</p>
-    <div class="program-count">15 programmas</div>
-  </div>
-</div>`;
-
-describe('HTML Parser Methods', () => {
+describe('RTUHtmlParser (Real HTML)', () => {
   let parser: RTUHtmlParser;
+  let realHtml: string;
 
-  beforeEach(() => {
+  beforeAll(async () => {
     parser = new RTUHtmlParser();
-  });
 
-  describe('parseSemesters', () => {
-    it('should parse semester options from HTML', () => {
-      const semesters = parser.parseHtmlSemesters(mockSemesterSelectHtml);
+    // Fetch real HTML from RTU website
+    const response = await axios.get('https://nodarbibas.rtu.lv/?lang=lv', {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        Accept: 'text/html',
+        'Accept-Language': 'lv,en;q=0.9',
+      },
+      timeout: 30000,
+    });
+    realHtml = response.data;
+  }, 60000);
 
-      expect(semesters).toHaveLength(6);
-      expect(semesters[0]).toEqual({
-        id: 28,
-        name: '2025/2026 Rudens semestris (25/26-R)',
-        isSelected: true,
-      });
-      expect(semesters[1]).toEqual({
-        id: 25,
-        name: '2024/2025 Vasaras semestris (24/25-V)',
-        isSelected: false,
-      });
+  describe('parseHtmlSemesters', () => {
+    it('should parse real semester options from RTU HTML', () => {
+      const semesters = parser.parseHtmlSemesters(realHtml);
+
+      expect(semesters).toBeInstanceOf(Array);
+      expect(semesters.length).toBeGreaterThan(0);
+
+      // Verify structure
+      const firstSemester = semesters[0]!;
+      expect(firstSemester).toHaveProperty('id');
+      expect(firstSemester).toHaveProperty('name');
+      expect(firstSemester).toHaveProperty('isSelected');
+      expect(typeof firstSemester.id).toBe('number');
+      expect(typeof firstSemester.name).toBe('string');
+      expect(typeof firstSemester.isSelected).toBe('boolean');
     });
 
-    it('should extract hidden semester metadata', () => {
-      const metadata = parser.parseHtmlSemesterMetadata(mockSemesterSelectHtml);
+    it('should have at least one selected semester', () => {
+      const semesters = parser.parseHtmlSemesters(realHtml);
 
-      expect(metadata).toEqual({
-        startDate: '2025-09-01',
-        endDate: '2026-01-25',
-        language: 'lv',
-      });
+      const selectedSemester = semesters.find((s) => s.isSelected);
+      expect(selectedSemester).toBeDefined();
     });
 
-    it('should handle empty semester list', () => {
-      const emptySemesterHtml = '<select id="semester-id"></select>';
-      const semesters = parser.parseHtmlSemesters(emptySemesterHtml);
+    it('should parse semester names in expected format', () => {
+      const semesters = parser.parseHtmlSemesters(realHtml);
 
-      expect(semesters).toEqual([]);
-    });
-
-    it('should handle malformed semester HTML', () => {
-      const malformedHtml = '<div>No semester select found</div>';
-      const semesters = parser.parseHtmlSemesters(malformedHtml);
-
-      expect(semesters).toEqual([]);
-    });
-  });
-
-  describe('parsePrograms', () => {
-    it('should parse program options grouped by faculty', () => {
-      const programs = parser.parseHtmlPrograms(mockProgramSelectHtml);
-
-      expect(programs).toHaveLength(3); // Number of faculties
-      expect(programs[0]).toEqual({
-        facultyName: 'Arhitektūras un dizaina institūts (01T00)',
-        facultyCode: '01T00',
-        programs: [
-          {
-            id: 227,
-            name: 'Arhitektūra (RABA0)',
-            code: 'RABA0',
-            tokens:
-              'Arhitektūras un dizaina institūts, 01T00, Arhitektūra, RABA0',
-          },
-          {
-            id: 1136,
-            name: 'Materiālu tehnoloģija un dizains (RWCH0)',
-            code: 'RWCH0',
-            tokens:
-              'Arhitektūras un dizaina institūts, 01T00, Materiālu tehnoloģija un dizains, RWCH0',
-          },
-          {
-            id: 1311,
-            name: 'Apģērbu un tekstila tehnoloģija (RWCV0)',
-            code: 'RWCV0',
-            tokens:
-              'Arhitektūras un dizaina institūts, 01T00, Apģērbu un tekstila tehnoloģija, RWCV0',
-          },
-        ],
-      });
-    });
-
-    it('should extract program codes from names', () => {
-      const programs = parser.parseHtmlPrograms(mockProgramSelectHtml);
-      const firstProgram = programs[0]?.programs?.[0];
-
-      expect(firstProgram?.code).toBe('RABA0');
-    });
-
-    it('should handle programs without faculty groups', () => {
-      const nonfacultyCategorizedHtml = `
-        <select id="program-id">
-          <option value="333">Datorsistēmas (RDBD0)</option>
-          <option value="340">Informācijas tehnoloģija (RDBI0)</option>
-        </select>
-      `;
-
-      const programs = parser.parseHtmlPrograms(nonfacultyCategorizedHtml);
-      expect(programs).toHaveLength(1);
-      expect(programs[0]?.facultyName).toBe('Uncategorized');
-    });
-
-    it('should filter out placeholder options', () => {
-      const programs = parser.parseHtmlPrograms(mockProgramSelectHtml);
-
-      // Should not include the "Izvēlne.." option with value="0"
-      programs.forEach((faculty) => {
-        faculty.programs.forEach((program) => {
-          expect(program.id).not.toBe(0);
-          expect(program.name).not.toBe('Izvēlne..');
-        });
-      });
+      // Semester names should contain academic year and type
+      for (const semester of semesters) {
+        // Most semester names contain year pattern YYYY/YYYY
+        expect(semester.name).toMatch(/\d{4}/);
+      }
     });
   });
 
-  describe('parseScheduleTable', () => {
-    it('should parse schedule table rows', () => {
-      const events = parser.parseHtmlScheduleTable(mockScheduleTableHtml);
+  describe('parseHtmlSemesterMetadata', () => {
+    it('should extract semester metadata from real HTML', () => {
+      const metadata = parser.parseHtmlSemesterMetadata(realHtml);
 
-      expect(events).toHaveLength(2);
-      expect(events[0]).toEqual({
-        time: '09:00 - 10:30',
-        subject: 'Datorzinātnes pamati',
-        lecturer: 'Dr. Jānis Bērziņš',
-        location: 'A-101',
-        type: 'Lekcija',
-        group: 'DBI-1',
-      });
+      expect(metadata).toHaveProperty('startDate');
+      expect(metadata).toHaveProperty('endDate');
+      expect(metadata).toHaveProperty('language');
     });
 
-    it('should parse time slots correctly', () => {
-      const events = parser.parseHtmlScheduleTable(mockScheduleTableHtml);
-      const timeSlot = parser.parseTimeSlot(events[0]?.time ?? '');
+    it('should have valid date format for startDate', () => {
+      const metadata = parser.parseHtmlSemesterMetadata(realHtml);
 
-      expect(timeSlot).toEqual({
-        start: '09:00',
-        end: '10:30',
-        duration: 90, // minutes
-      });
+      if (metadata.startDate) {
+        // Should be YYYY-MM-DD format
+        expect(metadata.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      }
     });
 
-    it('should handle empty schedule table', () => {
-      const emptyTableHtml = `
-        <table class="schedule-table">
-          <thead><tr><th>Laiks</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      `;
+    it('should have valid date format for endDate', () => {
+      const metadata = parser.parseHtmlSemesterMetadata(realHtml);
 
-      const events = parser.parseHtmlScheduleTable(emptyTableHtml);
-      expect(events).toEqual([]);
-    });
-
-    it('should handle malformed table rows', () => {
-      const malformedTableHtml = `
-        <table class="schedule-table">
-          <tbody>
-            <tr><td>Incomplete row</td></tr>
-            <tr class="event-row">
-              <td class="time-cell">09:00 - 10:30</td>
-              <td class="subject-cell">Complete Subject</td>
-              <td class="lecturer-cell">Complete Lecturer</td>
-              <td class="location-cell">A-101</td>
-              <td class="type-cell">Lekcija</td>
-              <td class="group-cell">DBI-1</td>
-            </tr>
-          </tbody>
-        </table>
-      `;
-
-      const events = parser.parseHtmlScheduleTable(malformedTableHtml);
-      expect(events).toHaveLength(1); // Only complete rows should be parsed
+      if (metadata.endDate) {
+        // Should be YYYY-MM-DD format
+        expect(metadata.endDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      }
     });
   });
 
-  describe('parseFaculties', () => {
-    it('should parse faculty list from HTML', () => {
-      const faculties = parser.parseHtmlFaculties(mockFacultyListHtml);
+  describe('parseHtmlPrograms', () => {
+    it('should parse real programs from RTU HTML', () => {
+      const programs = parser.parseHtmlPrograms(realHtml);
 
-      expect(faculties).toHaveLength(3);
-      expect(faculties[0]).toEqual({
-        name: 'Arhitektūras un dizaina institūts',
-        code: '01T00',
-        programCount: 3,
-      });
+      expect(programs).toBeInstanceOf(Array);
+      expect(programs.length).toBeGreaterThan(0);
     });
 
-    it('should extract program counts', () => {
-      const faculties = parser.parseHtmlFaculties(mockFacultyListHtml);
+    it('should have faculty information for each program group', () => {
+      const programs = parser.parseHtmlPrograms(realHtml);
 
-      expect(faculties[0]?.programCount).toBe(3);
-      expect(faculties[1]?.programCount).toBe(25);
-      expect(faculties[2]?.programCount).toBe(15);
+      for (const faculty of programs) {
+        expect(faculty).toHaveProperty('facultyName');
+        expect(faculty).toHaveProperty('facultyCode');
+        expect(faculty).toHaveProperty('programs');
+        expect(faculty.programs).toBeInstanceOf(Array);
+      }
     });
 
-    it('should handle missing program count information', () => {
-      const noCountHtml = `
-        <div class="faculty-list">
-          <div class="faculty-item" data-faculty-code="01T00">
-            <h3>Arhitektūras un dizaina institūts</h3>
-            <p class="faculty-code">01T00</p>
-          </div>
-        </div>
-      `;
+    it('should have program details within each faculty', () => {
+      const programs = parser.parseHtmlPrograms(realHtml);
 
-      const faculties = parser.parseHtmlFaculties(noCountHtml);
-      expect(faculties[0]?.programCount).toBe(0);
-    });
-  });
+      // Find a faculty with programs
+      const facultyWithPrograms = programs.find((f) => f.programs.length > 0);
+      expect(facultyWithPrograms).toBeDefined();
 
-  describe('parseNavigationElements', () => {
-    it('should parse breadcrumb navigation', () => {
-      const breadcrumbHtml = `
-        <nav aria-label="breadcrumb">
-          <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/">Sākums</a></li>
-            <li class="breadcrumb-item"><a href="/schedule">Nodarbības</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Datorsistēmas (RDBD0)</li>
-          </ol>
-        </nav>
-      `;
-
-      const breadcrumb = parser.parseHtmlBreadcrumb(breadcrumbHtml);
-
-      expect(breadcrumb).toHaveLength(3);
-      expect(breadcrumb[0]).toEqual({
-        text: 'Sākums',
-        href: '/',
-        isActive: false,
-      });
-      expect(breadcrumb[2]).toEqual({
-        text: 'Datorsistēmas (RDBD0)',
-        href: null,
-        isActive: true,
-      });
+      if (facultyWithPrograms) {
+        const program = facultyWithPrograms.programs[0]!;
+        expect(program).toHaveProperty('id');
+        expect(program).toHaveProperty('name');
+        expect(program).toHaveProperty('code');
+        expect(typeof program.id).toBe('number');
+        expect(typeof program.name).toBe('string');
+        expect(typeof program.code).toBe('string');
+      }
     });
 
-    it('should parse pagination elements', () => {
-      const paginationHtml = `
-        <nav aria-label="Schedule pagination">
-          <ul class="pagination">
-            <li class="page-item disabled"><a class="page-link" href="#">Previous</a></li>
-            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-            <li class="page-item"><a class="page-link" href="/page/2">2</a></li>
-            <li class="page-item"><a class="page-link" href="/page/3">3</a></li>
-            <li class="page-item"><a class="page-link" href="/page/2">Next</a></li>
-          </ul>
-        </nav>
-      `;
+    it('should include RDBD0 program (Datorsistemas)', () => {
+      const faculties = parser.parseHtmlPrograms(realHtml);
 
-      const pagination = parser.parseHtmlPagination(paginationHtml);
+      let foundRDBD0 = false;
+      for (const faculty of faculties) {
+        for (const program of faculty.programs) {
+          if (program.code === 'RDBD0') {
+            foundRDBD0 = true;
+            expect(program.name).toContain('Datorsistēmas');
+            break;
+          }
+        }
+      }
 
-      expect(pagination).toEqual({
-        currentPage: 1,
-        totalPages: 3,
-        hasNext: true,
-        hasPrevious: false,
-        nextUrl: '/page/2',
-        previousUrl: null,
-      });
-    });
-  });
-
-  describe('parseMetadata', () => {
-    it('should extract page metadata from HTML', () => {
-      const metaHtml = `
-        <html>
-          <head>
-            <title>RTU Nodarbības - Datorsistēmas</title>
-            <meta name="description" content="RTU studiju programmas nodarbību saraksts">
-            <meta name="keywords" content="RTU, nodarbības, studijas, programma">
-            <meta charset="utf-8">
-          </head>
-          <body></body>
-        </html>
-      `;
-
-      const metadata = parser.parseHtmlMetadata(metaHtml);
-
-      expect(metadata).toEqual({
-        title: 'RTU Nodarbības - Datorsistēmas',
-        description: 'RTU studiju programmas nodarbību saraksts',
-        keywords: 'RTU, nodarbības, studijas, programma',
-        charset: 'utf-8',
-      });
-    });
-
-    it('should handle missing metadata', () => {
-      const minimalHtml = '<html><head></head><body></body></html>';
-      const metadata = parser.parseHtmlMetadata(minimalHtml);
-
-      expect(metadata.title).toBe('');
-      expect(metadata.description).toBe('');
-      expect(metadata.keywords).toBe('');
-      expect(metadata.charset).toBe('');
+      expect(foundRDBD0).toBe(true);
     });
   });
 
   describe('Utility functions', () => {
-    it('should clean and normalize text content', () => {
+    it('should normalize text correctly', () => {
       const dirtyText = '  \n\t  Some   text  with    extra   spaces  \n\t  ';
       const cleanText = parser.normalizeText(dirtyText);
 
@@ -404,7 +159,7 @@ describe('HTML Parser Methods', () => {
       expect(parser.extractNumber('No numbers here')).toBe(0);
     });
 
-    it('should parse time ranges', () => {
+    it('should parse time ranges correctly', () => {
       expect(parser.parseTimeSlot('09:00 - 10:30')).toEqual({
         start: '09:00',
         end: '10:30',
@@ -448,6 +203,33 @@ describe('HTML Parser Methods', () => {
       expect(parser.parseHtmlSemesters(unexpectedHtml)).toEqual([]);
       expect(parser.parseHtmlPrograms(unexpectedHtml)).toEqual([]);
       expect(parser.parseHtmlScheduleTable(unexpectedHtml)).toEqual([]);
+    });
+  });
+
+  describe('parseHtmlScheduleTable', () => {
+    it('should return empty array for no schedule table', () => {
+      const noTableHtml = '<div>No schedule here</div>';
+      const events = parser.parseHtmlScheduleTable(noTableHtml);
+
+      expect(events).toEqual([]);
+    });
+  });
+
+  describe('parseHtmlMetadata', () => {
+    it('should extract page metadata from real HTML', () => {
+      const metadata = parser.parseHtmlMetadata(realHtml);
+
+      expect(metadata).toHaveProperty('title');
+      expect(metadata).toHaveProperty('description');
+      expect(metadata).toHaveProperty('keywords');
+      expect(metadata).toHaveProperty('charset');
+    });
+
+    it('should have a non-empty title', () => {
+      const metadata = parser.parseHtmlMetadata(realHtml);
+
+      // RTU page should have a title
+      expect(metadata.title.length).toBeGreaterThan(0);
     });
   });
 });

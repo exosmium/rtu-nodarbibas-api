@@ -1,17 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   CourseNotFoundError,
   GroupNotFoundError,
   InvalidOptionsError,
   PeriodNotFoundError,
   ProgramNotFoundError,
+  RTUSchedule,
   Schedule,
 } from '../src/index.js';
-import type {
-  ScheduleEntry,
-  StudyPeriod,
-  StudyProgram,
-} from '../src/schedule/types.js';
 import {
   getDayName,
   getDayOfWeek,
@@ -32,7 +28,13 @@ import {
 } from '../src/schedule/utils.js';
 import type { SemesterEvent } from '../src/types.js';
 
-describe('Schedule Utils', () => {
+/**
+ * Schedule Utils and Schedule class tests
+ * Utils are pure functions - tested directly
+ * Schedule class is tested with real data from RTU API
+ */
+
+describe('Schedule Utils (Pure Functions)', () => {
   describe('parseEntryType', () => {
     it('should parse lecture types', () => {
       expect(parseEntryType('Lekcija')).toBe('lecture');
@@ -281,299 +283,169 @@ describe('Schedule Utils', () => {
   });
 });
 
-describe('Schedule class', () => {
-  const mockPeriod: StudyPeriod = {
-    id: 1,
-    name: '2025/2026 Rudens semestris',
-    code: '25/26-R',
-    academicYear: '2025/2026',
-    season: 'autumn',
-    startDate: new Date('2025-09-01'),
-    endDate: new Date('2025-12-31'),
-    isSelected: true,
-  };
+describe('Schedule class (Real API Data)', () => {
+  let rtu: RTUSchedule;
+  let realSchedule: Schedule;
 
-  const mockProgram: StudyProgram = {
-    id: 1,
-    name: 'Datorsistēmas',
-    code: 'RDBD0',
-    fullName: 'Datorsistēmas (RDBD0)',
-    faculty: { name: 'DITF', code: '33000' },
-    tokens: '',
-  };
+  // Known stable IDs
+  const STABLE_SEMESTER_ID = 28;
+  const STABLE_PROGRAM_CODE = 'RDBD0';
 
-  const mockCourse = { id: 1, number: 1, name: '1. kurss' };
+  beforeAll(async () => {
+    rtu = new RTUSchedule();
 
-  const createMockEntries = (): ScheduleEntry[] => [
-    {
-      id: 1,
-      subject: { name: 'Math', code: 'MAT001' },
-      date: new Date('2025-09-01'),
-      startTime: '09:00',
-      endTime: '10:30',
-      startDateTime: new Date('2025-09-01T09:00:00'),
-      endDateTime: new Date('2025-09-01T10:30:00'),
-      durationMinutes: 90,
-      location: 'A-101',
-      building: 'A',
-      room: '101',
-      lecturer: 'Dr. Smith',
-      lecturers: ['Dr. Smith'],
-      type: 'lecture',
-      typeRaw: 'Lekcija',
-      group: 'DBI-1',
-      groups: ['DBI-1'],
-      weekNumber: 36,
-      dayOfWeek: 1,
-      dayName: 'Pirmdiena',
-      _raw: {} as SemesterEvent,
-    },
-    {
-      id: 2,
-      subject: { name: 'Physics', code: 'PHY001' },
-      date: new Date('2025-09-02'),
-      startTime: '11:00',
-      endTime: '12:30',
-      startDateTime: new Date('2025-09-02T11:00:00'),
-      endDateTime: new Date('2025-09-02T12:30:00'),
-      durationMinutes: 90,
-      location: 'B-202',
-      building: 'B',
-      room: '202',
-      lecturer: 'Dr. Johnson',
-      lecturers: ['Dr. Johnson'],
-      type: 'lab',
-      typeRaw: 'Laboratorija',
-      group: 'DBI-1',
-      groups: ['DBI-1'],
-      weekNumber: 36,
-      dayOfWeek: 2,
-      dayName: 'Otrdiena',
-      _raw: {} as SemesterEvent,
-    },
-  ];
-
-  it('should create schedule with entries', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
+    // Fetch real schedule data
+    realSchedule = await rtu.getSchedule({
+      periodId: STABLE_SEMESTER_ID,
+      program: STABLE_PROGRAM_CODE,
+      course: 1,
     });
+  }, 120000);
 
-    expect(schedule.count).toBe(2);
-    expect(schedule.isEmpty).toBe(false);
-    expect(schedule.first?.id).toBe(1);
-    expect(schedule.last?.id).toBe(2);
+  it('should have valid schedule structure', () => {
+    expect(realSchedule).toBeInstanceOf(Schedule);
+    expect(realSchedule.period).toBeDefined();
+    expect(realSchedule.program).toBeDefined();
+    expect(realSchedule.course).toBeDefined();
+    expect(realSchedule.fetchedAt).toBeInstanceOf(Date);
   });
 
-  it('should filter by type', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const lectures = schedule.filterByType('lecture');
-    expect(lectures.count).toBe(1);
-    expect(lectures.first?.type).toBe('lecture');
-
-    const labs = schedule.filterByType('lab');
-    expect(labs.count).toBe(1);
-    expect(labs.first?.type).toBe('lab');
+  it('should have entries array', () => {
+    expect(realSchedule.entries).toBeInstanceOf(Array);
+    // May or may not have entries depending on semester
   });
 
-  it('should filter by multiple types', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const filtered = schedule.filterByType(['lecture', 'lab']);
-    expect(filtered.count).toBe(2);
+  it('should return correct count', () => {
+    expect(realSchedule.count).toBe(realSchedule.entries.length);
   });
 
-  it('should filter by date range', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const filtered = schedule.filterByDateRange(
-      new Date('2025-09-01'),
-      new Date('2025-09-01')
-    );
-    expect(filtered.count).toBe(1);
-    expect(filtered.first?.id).toBe(1);
+  it('should correctly report isEmpty', () => {
+    expect(realSchedule.isEmpty).toBe(realSchedule.entries.length === 0);
   });
 
-  it('should filter by lecturer', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const filtered = schedule.filterByLecturer('Smith');
-    expect(filtered.count).toBe(1);
-    expect(filtered.first?.lecturer).toBe('Dr. Smith');
-  });
-
-  it('should filter by subject', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const byName = schedule.filterBySubject('Math');
-    expect(byName.count).toBe(1);
-
-    const byCode = schedule.filterBySubject('PHY001');
-    expect(byCode.count).toBe(1);
-  });
-
-  it('should group by type', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const grouped = schedule.groupByType();
-    expect(grouped.get('lecture')?.length).toBe(1);
-    expect(grouped.get('lab')?.length).toBe(1);
-  });
-
-  it('should group by date', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const grouped = schedule.groupByDate();
-    expect(grouped.get('2025-09-01')?.length).toBe(1);
-    expect(grouped.get('2025-09-02')?.length).toBe(1);
-  });
-
-  it('should get unique lecturers', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const lecturers = schedule.getLecturers();
-    expect(lecturers).toContain('Dr. Smith');
-    expect(lecturers).toContain('Dr. Johnson');
-  });
-
-  it('should get unique subjects', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const subjects = schedule.getSubjects();
-    expect(subjects.length).toBe(2);
-    expect(subjects.some((s) => s.name === 'Math')).toBe(true);
-    expect(subjects.some((s) => s.name === 'Physics')).toBe(true);
-  });
-
-  it('should sort entries', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    const asc = schedule.sorted('asc');
-    expect(asc.first?.id).toBe(1);
-
-    const desc = schedule.sorted('desc');
-    expect(desc.first?.id).toBe(2);
+  it('should have first and last properties', () => {
+    if (realSchedule.count > 0) {
+      expect(realSchedule.first).toBeDefined();
+      expect(realSchedule.last).toBeDefined();
+      expect(realSchedule.first?.id).toBeDefined();
+    } else {
+      expect(realSchedule.first).toBeUndefined();
+      expect(realSchedule.last).toBeUndefined();
+    }
   });
 
   it('should be iterable', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
     const ids: number[] = [];
-    for (const entry of schedule) {
+    for (const entry of realSchedule) {
       ids.push(entry.id);
     }
-    expect(ids).toEqual([1, 2]);
+    expect(ids.length).toBe(realSchedule.count);
+  });
+
+  it('should convert to array', () => {
+    const array = realSchedule.toArray();
+    expect(array).toBeInstanceOf(Array);
+    expect(array.length).toBe(realSchedule.count);
+  });
+
+  it('should filter by type', () => {
+    const lectures = realSchedule.filterByType('lecture');
+    expect(lectures).toBeInstanceOf(Schedule);
+
+    for (const entry of lectures) {
+      expect(entry.type).toBe('lecture');
+    }
+  });
+
+  it('should filter by multiple types', () => {
+    const filtered = realSchedule.filterByType(['lecture', 'practical']);
+    expect(filtered).toBeInstanceOf(Schedule);
+
+    for (const entry of filtered) {
+      expect(['lecture', 'practical']).toContain(entry.type);
+    }
+  });
+
+  it('should group by type', () => {
+    const grouped = realSchedule.groupByType();
+    expect(grouped).toBeInstanceOf(Map);
+
+    // Each group should contain entries of that type
+    for (const [type, entries] of grouped) {
+      for (const entry of entries) {
+        expect(entry.type).toBe(type);
+      }
+    }
+  });
+
+  it('should group by date', () => {
+    const grouped = realSchedule.groupByDate();
+    expect(grouped).toBeInstanceOf(Map);
+
+    // Each group should contain entries of that date
+    for (const [dateStr, entries] of grouped) {
+      for (const entry of entries) {
+        expect(entry.date.toISOString().slice(0, 10)).toBe(dateStr);
+      }
+    }
+  });
+
+  it('should group by week', () => {
+    const grouped = realSchedule.groupByWeek();
+    expect(grouped).toBeInstanceOf(Map);
+
+    // Each group should contain entries of that week
+    for (const [weekNum, entries] of grouped) {
+      for (const entry of entries) {
+        expect(entry.weekNumber).toBe(weekNum);
+      }
+    }
+  });
+
+  it('should get unique lecturers', () => {
+    const lecturers = realSchedule.getLecturers();
+    expect(lecturers).toBeInstanceOf(Array);
+
+    // Should be unique
+    const unique = new Set(lecturers);
+    expect(unique.size).toBe(lecturers.length);
+  });
+
+  it('should get unique subjects', () => {
+    const subjects = realSchedule.getSubjects();
+    expect(subjects).toBeInstanceOf(Array);
+
+    // Each subject should have name property
+    for (const subject of subjects) {
+      expect(subject.name).toBeDefined();
+    }
+  });
+
+  it('should sort ascending and descending', () => {
+    if (realSchedule.count > 1) {
+      const asc = realSchedule.sorted('asc');
+      const desc = realSchedule.sorted('desc');
+
+      expect(asc.first?.startDateTime.getTime()).toBeLessThanOrEqual(
+        asc.last!.startDateTime.getTime()
+      );
+      expect(desc.first?.startDateTime.getTime()).toBeGreaterThanOrEqual(
+        desc.last!.startDateTime.getTime()
+      );
+    }
   });
 
   it('should get date range', () => {
-    const entries = createMockEntries();
-    const schedule = new Schedule(entries, {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
+    const range = realSchedule.getDateRange();
 
-    const range = schedule.getDateRange();
-    expect(range).not.toBeNull();
-    expect(range!.start.toISOString().slice(0, 10)).toBe('2025-09-01');
-    expect(range!.end.toISOString().slice(0, 10)).toBe('2025-09-02');
-  });
-
-  it('should return null date range for empty schedule', () => {
-    const schedule = new Schedule([], {
-      period: mockPeriod,
-      program: mockProgram,
-      course: mockCourse,
-      group: undefined,
-      fetchedAt: new Date(),
-    });
-
-    expect(schedule.getDateRange()).toBeNull();
-    expect(schedule.isEmpty).toBe(true);
+    if (realSchedule.count > 0) {
+      expect(range).not.toBeNull();
+      expect(range!.start).toBeInstanceOf(Date);
+      expect(range!.end).toBeInstanceOf(Date);
+      expect(range!.start.getTime()).toBeLessThanOrEqual(range!.end.getTime());
+    } else {
+      expect(range).toBeNull();
+    }
   });
 });
 

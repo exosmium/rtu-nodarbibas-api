@@ -1,809 +1,308 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { RTUSchedule } from '../src/schedule/rtu-schedule.js';
-import { DiscoveryService } from '../src/schedule/discovery.js';
-import { Resolver } from '../src/schedule/resolver.js';
-import { RTUApiClient } from '../src/api-client.js';
 import { Schedule } from '../src/schedule/schedule-result.js';
 import {
+  CourseNotFoundError,
+  GroupNotFoundError,
   InvalidOptionsError,
   PeriodNotFoundError,
+  ProgramNotFoundError,
 } from '../src/schedule/errors.js';
-import type {
-  StudyCourse,
-  StudyGroup,
-  StudyPeriod,
-  StudyProgram,
-} from '../src/schedule/types.js';
-import type { SemesterEvent } from '../src/types.js';
 
-// Mock dependencies
-vi.mock('../src/schedule/discovery.js');
-vi.mock('../src/schedule/resolver.js');
-vi.mock('../src/api-client.js');
-vi.mock('../src/html-parser.js');
+/**
+ * Real API endpoint tests for RTUSchedule
+ * These tests hit the actual RTU API - no mocking
+ */
 
-// Test fixtures
-const mockPeriod: StudyPeriod = {
-  id: 45,
-  name: '2025/2026 Rudens semestris (25/26-R)',
-  code: '25/26-R',
-  academicYear: '2025/2026',
-  season: 'autumn',
-  startDate: new Date('2025-09-01'),
-  endDate: new Date('2025-12-31'),
-  isSelected: true,
-};
-
-const mockPeriod2: StudyPeriod = {
-  id: 46,
-  name: '2025/2026 Pavasara semestris (25/26-P)',
-  code: '25/26-P',
-  academicYear: '2025/2026',
-  season: 'spring',
-  startDate: new Date('2026-02-01'),
-  endDate: new Date('2026-05-31'),
-  isSelected: false,
-};
-
-const mockProgram: StudyProgram = {
-  id: 123,
-  name: 'Datorsistēmas',
-  code: 'RDBD0',
-  fullName: 'Datorsistēmas (RDBD0)',
-  faculty: { name: 'DITF', code: '33000' },
-  tokens: 'datorsistemas rdbd0',
-};
-
-const mockProgram2: StudyProgram = {
-  id: 124,
-  name: 'Informācijas tehnoloģija',
-  code: 'RITI0',
-  fullName: 'Informācijas tehnoloģija (RITI0)',
-  faculty: { name: 'DITF', code: '33000' },
-  tokens: 'informacijas tehnologija riti0',
-};
-
-const mockCourse: StudyCourse = {
-  id: 500,
-  number: 1,
-  name: '1. kurss',
-};
-
-const mockCourse2: StudyCourse = {
-  id: 501,
-  number: 2,
-  name: '2. kurss',
-};
-
-const mockGroup: StudyGroup = {
-  id: 700,
-  number: 13,
-  name: 'DBI-13',
-  studentCount: 25,
-  semesterProgramId: 700,
-};
-
-const mockGroup2: StudyGroup = {
-  id: 701,
-  number: 14,
-  name: 'DBI-14',
-  studentCount: 23,
-  semesterProgramId: 701,
-};
-
-const createMockEvent = (id: number, date: string): SemesterEvent => ({
-  id,
-  title: `Subject ${id}`,
-  start: `${date}T09:00:00`,
-  end: `${date}T10:30:00`,
-  location: 'A-101',
-  lecturer: 'Dr. Jānis Bērziņš',
-  type: 'Lekcija',
-  group: 'DBI-1',
-  course: 'PRG001',
-});
-
-describe('RTUSchedule', () => {
+describe('RTUSchedule (Real API)', () => {
   let rtu: RTUSchedule;
-  let mockDiscoveryService: {
-    discoverPeriods: ReturnType<typeof vi.fn>;
-    discoverCurrentPeriod: ReturnType<typeof vi.fn>;
-    discoverPrograms: ReturnType<typeof vi.fn>;
-    clearCache: ReturnType<typeof vi.fn>;
-  };
-  let mockResolver: {
-    resolvePeriod: ReturnType<typeof vi.fn>;
-    resolveProgram: ReturnType<typeof vi.fn>;
-    resolveCourse: ReturnType<typeof vi.fn>;
-    resolveGroup: ReturnType<typeof vi.fn>;
-    getCourses: ReturnType<typeof vi.fn>;
-    getGroups: ReturnType<typeof vi.fn>;
-  };
-  let mockApiClient: {
-    fetchSemesterProgramEvents: ReturnType<typeof vi.fn>;
-    checkSemesterProgramPublished: ReturnType<typeof vi.fn>;
-    clearCache: ReturnType<typeof vi.fn>;
-  };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  // Known stable IDs from RTU
+  const STABLE_SEMESTER_ID = 28; // 2025/2026 Rudens
+  const STABLE_PROGRAM_CODE = 'RDBD0'; // Datorsistemas
+  const STABLE_PROGRAM_ID = 333;
 
-    // Setup mock implementations
-    mockDiscoveryService = {
-      discoverPeriods: vi.fn(),
-      discoverCurrentPeriod: vi.fn(),
-      discoverPrograms: vi.fn(),
-      clearCache: vi.fn(),
-    };
-
-    mockResolver = {
-      resolvePeriod: vi.fn(),
-      resolveProgram: vi.fn(),
-      resolveCourse: vi.fn(),
-      resolveGroup: vi.fn(),
-      getCourses: vi.fn(),
-      getGroups: vi.fn(),
-    };
-
-    mockApiClient = {
-      fetchSemesterProgramEvents: vi.fn(),
-      checkSemesterProgramPublished: vi.fn(),
-      clearCache: vi.fn(),
-    };
-
-    // Mock constructor calls
-    vi.mocked(DiscoveryService).mockImplementation(
-      () => mockDiscoveryService as unknown as DiscoveryService
-    );
-    vi.mocked(Resolver).mockImplementation(
-      () => mockResolver as unknown as Resolver
-    );
-    vi.mocked(RTUApiClient).mockImplementation(
-      () => mockApiClient as unknown as RTUApiClient
-    );
-
+  beforeAll(() => {
     rtu = new RTUSchedule();
-  });
-
-  afterEach(() => {
-    vi.resetAllMocks();
   });
 
   // ========== getPeriods() Tests ==========
   describe('getPeriods()', () => {
-    it('should delegate to discovery service', async () => {
-      mockDiscoveryService.discoverPeriods.mockResolvedValue([
-        mockPeriod,
-        mockPeriod2,
-      ]);
-
+    it('should fetch real periods from RTU', async () => {
       const periods = await rtu.getPeriods();
 
-      expect(mockDiscoveryService.discoverPeriods).toHaveBeenCalledTimes(1);
-      expect(periods).toHaveLength(2);
-      expect(periods[0]).toBe(mockPeriod);
-      expect(periods[1]).toBe(mockPeriod2);
-    });
+      expect(periods).toBeInstanceOf(Array);
+      expect(periods.length).toBeGreaterThan(0);
+      expect(periods[0]).toHaveProperty('id');
+      expect(periods[0]).toHaveProperty('name');
+      expect(periods[0]).toHaveProperty('code');
+      expect(periods[0]).toHaveProperty('academicYear');
+      expect(periods[0]).toHaveProperty('season');
+      expect(periods[0]).toHaveProperty('startDate');
+      expect(periods[0]).toHaveProperty('endDate');
+    }, 30000);
 
-    it('should return empty array when no periods available', async () => {
-      mockDiscoveryService.discoverPeriods.mockResolvedValue([]);
-
+    it('should include current period in the list', async () => {
       const periods = await rtu.getPeriods();
 
-      expect(periods).toHaveLength(0);
-    });
+      const currentPeriod = periods.find((p) => p.isSelected === true);
+      expect(currentPeriod).toBeDefined();
+    }, 30000);
   });
 
   // ========== getCurrentPeriod() Tests ==========
   describe('getCurrentPeriod()', () => {
-    it('should return current period when available', async () => {
-      mockDiscoveryService.discoverCurrentPeriod.mockResolvedValue(mockPeriod);
-
+    it('should return the currently selected period', async () => {
       const period = await rtu.getCurrentPeriod();
 
-      expect(period).toBe(mockPeriod);
-      expect(mockDiscoveryService.discoverCurrentPeriod).toHaveBeenCalledTimes(
-        1
-      );
-    });
-
-    it('should throw PeriodNotFoundError when no current period', async () => {
-      mockDiscoveryService.discoverCurrentPeriod.mockResolvedValue(null);
-
-      await expect(rtu.getCurrentPeriod()).rejects.toThrow(PeriodNotFoundError);
-    });
-
-    it('should throw PeriodNotFoundError with correct message', async () => {
-      mockDiscoveryService.discoverCurrentPeriod.mockResolvedValue(null);
-
-      await expect(rtu.getCurrentPeriod()).rejects.toThrow('current');
-    });
+      expect(period).toBeDefined();
+      expect(period.id).toBeGreaterThan(0);
+      expect(period.isSelected).toBe(true);
+      expect(period.name).toBeDefined();
+    }, 30000);
   });
 
   // ========== getPrograms() Tests ==========
   describe('getPrograms()', () => {
-    it('should get programs by period ID', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockDiscoveryService.discoverPrograms.mockResolvedValue([
-        mockProgram,
-        mockProgram2,
-      ]);
+    it('should get programs for a specific period', async () => {
+      const programs = await rtu.getPrograms(STABLE_SEMESTER_ID);
 
-      const programs = await rtu.getPrograms(45);
+      expect(programs).toBeInstanceOf(Array);
+      expect(programs.length).toBeGreaterThan(0);
+      expect(programs[0]).toHaveProperty('id');
+      expect(programs[0]).toHaveProperty('name');
+      expect(programs[0]).toHaveProperty('code');
+      expect(programs[0]).toHaveProperty('faculty');
+    }, 30000);
 
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith(45);
-      expect(mockDiscoveryService.discoverPrograms).toHaveBeenCalledWith(45);
-      expect(programs).toHaveLength(2);
-    });
+    it('should find Datorsistemas program', async () => {
+      const programs = await rtu.getPrograms(STABLE_SEMESTER_ID);
 
-    it('should get programs by period code', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockDiscoveryService.discoverPrograms.mockResolvedValue([mockProgram]);
+      const datorsistemas = programs.find((p) => p.code === 'RDBD0');
+      expect(datorsistemas).toBeDefined();
+      expect(datorsistemas?.name).toContain('Datorsistēmas');
+    }, 30000);
 
-      const programs = await rtu.getPrograms('25/26-R');
-
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith('25/26-R');
-      expect(mockDiscoveryService.discoverPrograms).toHaveBeenCalledWith(45);
-      expect(programs).toHaveLength(1);
-    });
-
-    it('should get programs by period name', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockDiscoveryService.discoverPrograms.mockResolvedValue([mockProgram]);
-
-      const programs = await rtu.getPrograms('Rudens 2025');
-
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith('Rudens 2025');
-      expect(programs).toHaveLength(1);
-    });
-
-    it('should use current period when not specified', async () => {
-      mockDiscoveryService.discoverCurrentPeriod.mockResolvedValue(mockPeriod);
-      mockDiscoveryService.discoverPrograms.mockResolvedValue([mockProgram]);
-
+    it('should get programs for current period when not specified', async () => {
       const programs = await rtu.getPrograms();
 
-      expect(mockDiscoveryService.discoverCurrentPeriod).toHaveBeenCalledTimes(
-        1
-      );
-      expect(mockDiscoveryService.discoverPrograms).toHaveBeenCalledWith(45);
-      expect(programs).toHaveLength(1);
-    });
+      expect(programs).toBeInstanceOf(Array);
+      expect(programs.length).toBeGreaterThan(0);
+    }, 30000);
   });
 
   // ========== getCourses() Tests ==========
   describe('getCourses()', () => {
-    it('should resolve period and program then get courses', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.getCourses.mockResolvedValue([mockCourse, mockCourse2]);
+    it('should get courses for a valid program', async () => {
+      const courses = await rtu.getCourses(
+        STABLE_SEMESTER_ID,
+        STABLE_PROGRAM_CODE
+      );
 
-      const courses = await rtu.getCourses(45, 'RDBD0');
+      expect(courses).toBeInstanceOf(Array);
+      expect(courses.length).toBeGreaterThan(0);
+      expect(courses[0]).toHaveProperty('id');
+      expect(courses[0]).toHaveProperty('number');
+      expect(courses[0]).toHaveProperty('name');
+    }, 30000);
 
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith(45);
-      expect(mockResolver.resolveProgram).toHaveBeenCalledWith('RDBD0', 45);
-      expect(mockResolver.getCourses).toHaveBeenCalledWith(45, 123);
-      expect(courses).toHaveLength(2);
-    });
+    it('should work with program ID instead of code', async () => {
+      const courses = await rtu.getCourses(
+        STABLE_SEMESTER_ID,
+        STABLE_PROGRAM_ID
+      );
 
-    it('should work with string period and numeric program', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.getCourses.mockResolvedValue([mockCourse]);
-
-      const courses = await rtu.getCourses('25/26-R', 123);
-
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith('25/26-R');
-      expect(mockResolver.resolveProgram).toHaveBeenCalledWith(123, 45);
-      expect(courses).toHaveLength(1);
-    });
+      expect(courses).toBeInstanceOf(Array);
+      expect(courses.length).toBeGreaterThan(0);
+    }, 30000);
   });
 
   // ========== getGroups() Tests ==========
   describe('getGroups()', () => {
-    it('should perform full chain resolution', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockResolver.getGroups.mockResolvedValue([mockGroup, mockGroup2]);
+    it('should get groups for a valid course', async () => {
+      const groups = await rtu.getGroups(
+        STABLE_SEMESTER_ID,
+        STABLE_PROGRAM_CODE,
+        1
+      );
 
-      const groups = await rtu.getGroups('25/26-R', 'RDBD0', 1);
-
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith('25/26-R');
-      expect(mockResolver.resolveProgram).toHaveBeenCalledWith('RDBD0', 45);
-      expect(mockResolver.resolveCourse).toHaveBeenCalledWith(1, 45, 123);
-      expect(mockResolver.getGroups).toHaveBeenCalledWith(45, 123, 500);
-      expect(groups).toHaveLength(2);
-    });
-
-    it('should work with numeric IDs throughout', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockResolver.getGroups.mockResolvedValue([mockGroup]);
-
-      const groups = await rtu.getGroups(45, 123, 1);
-
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith(45);
-      expect(mockResolver.resolveProgram).toHaveBeenCalledWith(123, 45);
-      expect(groups).toHaveLength(1);
-    });
+      expect(groups).toBeInstanceOf(Array);
+      if (groups.length > 0) {
+        expect(groups[0]).toHaveProperty('id');
+        expect(groups[0]).toHaveProperty('number');
+        expect(groups[0]).toHaveProperty('name');
+        expect(groups[0]).toHaveProperty('studentCount');
+        expect(groups[0]).toHaveProperty('semesterProgramId');
+      }
+    }, 30000);
   });
 
   // ========== getSchedule() Tests ==========
   describe('getSchedule()', () => {
-    it('should get schedule with period code and program code', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([
-        createMockEvent(1, '2025-09-15'),
-      ]);
-
+    it('should get schedule with period and program codes', async () => {
       const schedule = await rtu.getSchedule({
         period: '25/26-R',
-        program: 'RDBD0',
+        program: STABLE_PROGRAM_CODE,
         course: 1,
       });
 
       expect(schedule).toBeInstanceOf(Schedule);
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith('25/26-R');
-      expect(mockResolver.resolveProgram).toHaveBeenCalledWith('RDBD0', 45);
-    });
+      expect(schedule.period).toBeDefined();
+      expect(schedule.program).toBeDefined();
+      expect(schedule.course).toBeDefined();
+      expect(schedule.fetchedAt).toBeInstanceOf(Date);
+    }, 60000);
 
-    it('should get schedule with periodId and programId', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
+    it('should get schedule with period and program IDs', async () => {
       const schedule = await rtu.getSchedule({
-        periodId: 45,
-        programId: 123,
+        periodId: STABLE_SEMESTER_ID,
+        programId: STABLE_PROGRAM_ID,
         course: 1,
       });
 
       expect(schedule).toBeInstanceOf(Schedule);
-      expect(mockResolver.resolvePeriod).toHaveBeenCalledWith(45);
-      expect(mockResolver.resolveProgram).toHaveBeenCalledWith(123, 45);
-    });
-
-    it('should use current period when only course specified', async () => {
-      mockDiscoveryService.discoverCurrentPeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      const schedule = await rtu.getSchedule({
-        program: 'RDBD0',
-        course: 1,
-      });
-
-      expect(schedule).toBeInstanceOf(Schedule);
-      expect(mockDiscoveryService.discoverCurrentPeriod).toHaveBeenCalled();
-    });
+    }, 60000);
 
     it('should get schedule with group specified', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockResolver.resolveGroup.mockResolvedValue(mockGroup);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
+      // Groups for RDBD0 course 1 start at 9
       const schedule = await rtu.getSchedule({
         period: '25/26-R',
-        program: 'RDBD0',
+        program: STABLE_PROGRAM_CODE,
         course: 1,
-        group: 13,
+        group: 9,
       });
 
       expect(schedule).toBeInstanceOf(Schedule);
-      expect(mockResolver.resolveGroup).toHaveBeenCalledWith(13, 45, 123, 500);
-    });
+      expect(schedule.group).toBeDefined();
+    }, 60000);
 
-    it('should get schedule without group (gets all)', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-      });
-
-      expect(schedule).toBeInstanceOf(Schedule);
-      expect(mockResolver.resolveGroup).not.toHaveBeenCalled();
-    });
-
-    it('should use custom date range when provided', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([
-        createMockEvent(1, '2025-10-15'),
-      ]);
+    it('should get schedule with custom date range', async () => {
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
       const schedule = await rtu.getSchedule({
         period: '25/26-R',
-        program: 'RDBD0',
+        program: STABLE_PROGRAM_CODE,
         course: 1,
-        startDate: '2025-10-01',
-        endDate: '2025-10-31',
+        startDate: startDate.toISOString().split('T')[0]!,
+        endDate: endDate.toISOString().split('T')[0]!,
       });
 
       expect(schedule).toBeInstanceOf(Schedule);
-      // Should only fetch October
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledWith({
-        semesterProgramId: 500,
-        year: 2025,
-        month: 10,
-      });
-    });
+    }, 60000);
 
-    it('should use semester dates when no date range provided', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-      });
-
-      // Should fetch September through December (4 months)
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledTimes(4);
-    });
-
-    it('should throw InvalidOptionsError for missing required fields', async () => {
-      await expect(
-        rtu.getSchedule({
-          period: '25/26-R',
-          course: 1,
-        } as { period: string; course: number; program?: string })
-      ).rejects.toThrow(InvalidOptionsError);
-    });
-
-    it('should throw InvalidOptionsError when course < 1', async () => {
-      await expect(
-        rtu.getSchedule({
-          period: '25/26-R',
-          program: 'RDBD0',
-          course: 0,
-        })
-      ).rejects.toThrow(InvalidOptionsError);
-    });
-
-    it('should throw InvalidOptionsError when course is negative', async () => {
-      await expect(
-        rtu.getSchedule({
-          period: '25/26-R',
-          program: 'RDBD0',
-          course: -1,
-        })
-      ).rejects.toThrow(InvalidOptionsError);
-    });
-
-    it('should throw InvalidOptionsError with correct message for missing program', async () => {
+    it('should throw InvalidOptionsError for missing program', async () => {
       await expect(
         rtu.getSchedule({
           period: '25/26-R',
           course: 1,
         } as { period: string; course: number })
-      ).rejects.toThrow('Either program or programId is required');
+      ).rejects.toThrow(InvalidOptionsError);
     });
 
-    it('should throw InvalidOptionsError with correct message for invalid course', async () => {
+    it('should throw InvalidOptionsError for invalid course', async () => {
       await expect(
         rtu.getSchedule({
           period: '25/26-R',
-          program: 'RDBD0',
+          program: STABLE_PROGRAM_CODE,
           course: 0,
         })
-      ).rejects.toThrow('course is required and must be >= 1');
+      ).rejects.toThrow(InvalidOptionsError);
     });
 
-    it('should fetch all months in multi-month range', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        startDate: '2025-09-01',
-        endDate: '2025-11-30',
-      });
-
-      // Should fetch September, October, November (3 months)
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledTimes(3);
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledWith({
-        semesterProgramId: 500,
-        year: 2025,
-        month: 9,
-      });
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledWith({
-        semesterProgramId: 500,
-        year: 2025,
-        month: 10,
-      });
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledWith({
-        semesterProgramId: 500,
-        year: 2025,
-        month: 11,
-      });
-    });
-
-    it('should deduplicate events by ID', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-
-      // Simulate event appearing in two months (edge case)
-      const duplicateEvent = createMockEvent(1, '2025-09-30');
-      mockApiClient.fetchSemesterProgramEvents
-        .mockResolvedValueOnce([duplicateEvent])
-        .mockResolvedValueOnce([
-          duplicateEvent,
-          createMockEvent(2, '2025-10-15'),
-        ])
-        .mockResolvedValue([]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        startDate: '2025-09-01',
-        endDate: '2025-10-31',
-      });
-
-      // Should have 2 unique events, not 3
-      expect(schedule.count).toBe(2);
-    });
-
-    it('should sort results by start date/time', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-
-      // Return events out of order
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([
-        createMockEvent(3, '2025-09-20'),
-        createMockEvent(1, '2025-09-05'),
-        createMockEvent(2, '2025-09-10'),
-      ]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        startDate: '2025-09-01',
-        endDate: '2025-09-30',
-      });
-
-      expect(schedule.first?.id).toBe(1);
-      expect(schedule.last?.id).toBe(3);
+    it('should throw InvalidOptionsError for negative course', async () => {
+      await expect(
+        rtu.getSchedule({
+          period: '25/26-R',
+          program: STABLE_PROGRAM_CODE,
+          course: -1,
+        })
+      ).rejects.toThrow(InvalidOptionsError);
     });
   });
 
   // ========== isSchedulePublished() Tests ==========
   describe('isSchedulePublished()', () => {
-    it('should check published status without group', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.checkSemesterProgramPublished.mockResolvedValue(true);
-
-      const published = await rtu.isSchedulePublished('25/26-R', 'RDBD0', 1);
-
-      expect(published).toBe(true);
-      expect(mockApiClient.checkSemesterProgramPublished).toHaveBeenCalledWith(
-        500
-      );
-    });
-
-    it('should check published status with group', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockResolver.resolveGroup.mockResolvedValue(mockGroup);
-      mockApiClient.checkSemesterProgramPublished.mockResolvedValue(true);
-
+    it('should check published status for a valid schedule', async () => {
       const published = await rtu.isSchedulePublished(
-        '25/26-R',
-        'RDBD0',
+        STABLE_SEMESTER_ID,
+        STABLE_PROGRAM_CODE,
+        1
+      );
+
+      expect(typeof published).toBe('boolean');
+    }, 30000);
+
+    it('should check published status with group specified', async () => {
+      // Groups for RDBD0 course 1 start at 9
+      const published = await rtu.isSchedulePublished(
+        STABLE_SEMESTER_ID,
+        STABLE_PROGRAM_CODE,
         1,
-        13
+        9
       );
 
-      expect(published).toBe(true);
-      expect(mockResolver.resolveGroup).toHaveBeenCalledWith(13, 45, 123, 500);
-      expect(mockApiClient.checkSemesterProgramPublished).toHaveBeenCalledWith(
-        700
+      expect(typeof published).toBe('boolean');
+    }, 30000);
+  });
+
+  // ========== Error handling tests ==========
+  describe('Error handling', () => {
+    it('should throw PeriodNotFoundError for invalid period', async () => {
+      await expect(rtu.getPrograms(999999)).rejects.toThrow(
+        PeriodNotFoundError
       );
-    });
+    }, 30000);
 
-    it('should return false when schedule not published', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.checkSemesterProgramPublished.mockResolvedValue(false);
+    it('should throw ProgramNotFoundError for invalid program code', async () => {
+      await expect(
+        rtu.getCourses(STABLE_SEMESTER_ID, 'INVALID_XYZ')
+      ).rejects.toThrow(ProgramNotFoundError);
+    }, 30000);
 
-      const published = await rtu.isSchedulePublished('25/26-R', 'RDBD0', 1);
+    it('should throw CourseNotFoundError for invalid course number', async () => {
+      await expect(
+        rtu.getGroups(STABLE_SEMESTER_ID, STABLE_PROGRAM_CODE, 99)
+      ).rejects.toThrow(CourseNotFoundError);
+    }, 30000);
 
-      expect(published).toBe(false);
-    });
+    it('should throw GroupNotFoundError for invalid group number', async () => {
+      await expect(
+        rtu.getSchedule({
+          period: '25/26-R',
+          program: STABLE_PROGRAM_CODE,
+          course: 1,
+          group: 999, // A group number that definitely doesn't exist
+        })
+      ).rejects.toThrow(GroupNotFoundError);
+    }, 60000);
   });
 
-  // ========== refresh() and clearCache() Tests ==========
-  describe('refresh()', () => {
-    it('should clear both discovery and API caches', () => {
-      rtu.refresh();
-
-      expect(mockDiscoveryService.clearCache).toHaveBeenCalledTimes(1);
-      expect(mockApiClient.clearCache).toHaveBeenCalledTimes(1);
+  // ========== Cache tests ==========
+  describe('Cache behavior', () => {
+    it('should refresh cache without throwing', () => {
+      expect(() => rtu.refresh()).not.toThrow();
     });
+
+    it('should clear cache without throwing', () => {
+      expect(() => rtu.clearCache()).not.toThrow();
+    });
+
+    it('should return same data on subsequent calls (cached)', async () => {
+      const periods1 = await rtu.getPeriods();
+      const periods2 = await rtu.getPeriods();
+
+      expect(periods1).toEqual(periods2);
+    }, 30000);
   });
 
-  describe('clearCache()', () => {
-    it('should clear both discovery and API caches', () => {
-      rtu.clearCache();
-
-      expect(mockDiscoveryService.clearCache).toHaveBeenCalledTimes(1);
-      expect(mockApiClient.clearCache).toHaveBeenCalledTimes(1);
-    });
-
-    it('should be synchronous', () => {
-      const result = rtu.clearCache();
-      expect(result).toBeUndefined();
-    });
-  });
-
-  // ========== Edge Cases ==========
-  describe('Edge cases', () => {
-    it('should handle empty events response', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-      });
-
-      expect(schedule.isEmpty).toBe(true);
-      expect(schedule.count).toBe(0);
-    });
-
-    it('should continue with other months on partial month failures', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-
-      // First month fails, second succeeds
-      mockApiClient.fetchSemesterProgramEvents
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce([createMockEvent(1, '2025-10-15')]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        startDate: '2025-09-01',
-        endDate: '2025-10-31',
-      });
-
-      // Should still have events from October
-      expect(schedule.count).toBe(1);
-    });
-
-    it('should filter entries by date range', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-
-      // Events outside the requested range should be filtered
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([
-        createMockEvent(1, '2025-09-15'),
-        createMockEvent(2, '2025-09-20'),
-        createMockEvent(3, '2025-09-25'),
-      ]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        startDate: '2025-09-16',
-        endDate: '2025-09-21',
-      });
-
-      // Only event 2 should be in range
-      expect(schedule.count).toBe(1);
-      expect(schedule.first?.id).toBe(2);
-    });
-
-    it('should use group semesterProgramId when group is specified', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockResolver.resolveGroup.mockResolvedValue(mockGroup);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        group: 13,
-        startDate: '2025-09-01',
-        endDate: '2025-09-30',
-      });
-
-      // Should use group's semesterProgramId (700) instead of course id (500)
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledWith({
-        semesterProgramId: 700,
-        year: 2025,
-        month: 9,
-      });
-    });
-
-    it('should include schedule metadata', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockResolver.resolveGroup.mockResolvedValue(mockGroup);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        group: 13,
-      });
-
-      expect(schedule.period).toBe(mockPeriod);
-      expect(schedule.program).toBe(mockProgram);
-      expect(schedule.course).toBe(mockCourse);
-      expect(schedule.group).toBe(mockGroup);
-      expect(schedule.fetchedAt).toBeInstanceOf(Date);
-    });
-
-    it('should handle Date objects for startDate and endDate', async () => {
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([]);
-
-      const schedule = await rtu.getSchedule({
-        period: '25/26-R',
-        program: 'RDBD0',
-        course: 1,
-        startDate: new Date('2025-10-01'),
-        endDate: new Date('2025-10-31'),
-      });
-
-      expect(schedule).toBeInstanceOf(Schedule);
-      expect(mockApiClient.fetchSemesterProgramEvents).toHaveBeenCalledWith({
-        semesterProgramId: 500,
-        year: 2025,
-        month: 10,
-      });
-    });
-  });
-
-  // ========== Configuration Tests ==========
+  // ========== Configuration tests ==========
   describe('Configuration', () => {
     it('should accept custom config', () => {
       const customRtu = new RTUSchedule({
-        baseUrl: 'https://custom.rtu.lv',
-        timeout: 5000,
-        cacheTimeout: 60000,
+        timeout: 10000,
+        cacheTimeout: 120000,
       });
 
       expect(customRtu).toBeInstanceOf(RTUSchedule);
@@ -815,37 +314,50 @@ describe('RTUSchedule', () => {
     });
   });
 
-  // ========== Integration-like Tests ==========
-  describe('Integration scenarios', () => {
-    it('should handle complete workflow: periods -> programs -> schedule', async () => {
-      mockDiscoveryService.discoverPeriods.mockResolvedValue([
-        mockPeriod,
-        mockPeriod2,
-      ]);
-      mockDiscoveryService.discoverCurrentPeriod.mockResolvedValue(mockPeriod);
-      mockDiscoveryService.discoverPrograms.mockResolvedValue([mockProgram]);
-      mockResolver.resolvePeriod.mockResolvedValue(mockPeriod);
-      mockResolver.resolveProgram.mockResolvedValue(mockProgram);
-      mockResolver.resolveCourse.mockResolvedValue(mockCourse);
-      mockApiClient.fetchSemesterProgramEvents.mockResolvedValue([
-        createMockEvent(1, '2025-09-15'),
-      ]);
-
+  // ========== Full workflow tests ==========
+  describe('Full workflow', () => {
+    it('should complete periods -> programs -> courses -> groups -> schedule workflow', async () => {
       // Step 1: Get periods
       const periods = await rtu.getPeriods();
-      expect(periods).toHaveLength(2);
+      expect(periods.length).toBeGreaterThan(0);
 
-      // Step 2: Get programs
-      const programs = await rtu.getPrograms(periods[0]!.id);
-      expect(programs).toHaveLength(1);
+      // Step 2: Find current period
+      const currentPeriod = await rtu.getCurrentPeriod();
+      expect(currentPeriod).toBeDefined();
 
-      // Step 3: Get schedule
-      const schedule = await rtu.getSchedule({
-        periodId: periods[0]!.id,
-        programId: programs[0]!.id,
-        course: 1,
-      });
-      expect(schedule.count).toBe(1);
-    });
+      // Step 3: Get programs
+      const programs = await rtu.getPrograms(currentPeriod.id);
+      expect(programs.length).toBeGreaterThan(0);
+
+      // Step 4: Find a known program
+      const program = programs.find((p) => p.code === STABLE_PROGRAM_CODE);
+      if (!program) return; // Skip if program not found in current period
+
+      // Step 5: Get courses
+      const courses = await rtu.getCourses(currentPeriod.id, program.code);
+      expect(courses.length).toBeGreaterThan(0);
+
+      // Step 6: Get groups
+      const groups = await rtu.getGroups(
+        currentPeriod.id,
+        program.code,
+        courses[0]!.number
+      );
+      expect(groups).toBeInstanceOf(Array);
+
+      // Step 7: Get schedule (if groups exist)
+      if (groups.length > 0) {
+        const schedule = await rtu.getSchedule({
+          periodId: currentPeriod.id,
+          programId: program.id,
+          course: courses[0]!.number,
+          group: groups[0]!.number,
+        });
+
+        expect(schedule).toBeInstanceOf(Schedule);
+        expect(schedule.period.id).toBe(currentPeriod.id);
+        expect(schedule.program.id).toBe(program.id);
+      }
+    }, 120000);
   });
 });

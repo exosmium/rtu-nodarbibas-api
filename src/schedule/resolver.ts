@@ -16,7 +16,6 @@ import {
 import {
   fuzzyMatch,
   normalizeForComparison,
-  parseCourseNumber,
   parseGroupNumber,
 } from './utils.js';
 
@@ -126,12 +125,12 @@ export class Resolver {
     });
 
     const course = this.findCourseByNumber(courses, courseNumber);
-    if (!course) throw new CourseNotFoundError(courseNumber);
+    if (course === undefined) throw new CourseNotFoundError(courseNumber);
 
     return {
-      id: course.id,
-      number: parseCourseNumber(course.name) || courseNumber,
-      name: course.name,
+      id: course,
+      number: course,
+      name: `${course}. kurss`,
     };
   }
 
@@ -154,11 +153,11 @@ export class Resolver {
     if (!group) throw new GroupNotFoundError(groupNumber);
 
     return {
-      id: group.id,
-      number: parseGroupNumber(group.name) || groupNumber,
-      name: group.name,
-      studentCount: group.studentCount,
-      semesterProgramId: group.id, // The group ID is used as semesterProgramId for event fetching
+      id: group.semesterProgramId,
+      number: parseGroupNumber(group.group) || groupNumber,
+      name: group.group,
+      studentCount: 0, // API doesn't provide student count
+      semesterProgramId: group.semesterProgramId,
     };
   }
 
@@ -175,9 +174,9 @@ export class Resolver {
     });
 
     return courses.map((c) => ({
-      id: c.id,
-      number: parseCourseNumber(c.name),
-      name: c.name,
+      id: c,
+      number: c,
+      name: `${c}. kurss`,
     }));
   }
 
@@ -196,11 +195,11 @@ export class Resolver {
     });
 
     return groups.map((g) => ({
-      id: g.id,
-      number: parseGroupNumber(g.name),
-      name: g.name,
-      studentCount: g.studentCount,
-      semesterProgramId: g.id,
+      id: g.semesterProgramId,
+      number: parseGroupNumber(g.group),
+      name: g.group,
+      studentCount: 0,
+      semesterProgramId: g.semesterProgramId,
     }));
   }
 
@@ -266,37 +265,25 @@ export class Resolver {
     courses: Course[],
     courseNumber: number
   ): Course | undefined {
-    // Try to find by parsed number from name
-    const byParsedNumber = courses.find((c) => {
-      const parsed = parseCourseNumber(c.name);
-      return parsed === courseNumber;
-    });
-    if (byParsedNumber) return byParsedNumber;
-
-    // Try by semester field if it matches course number
-    const bySemester = courses.find((c) => c.semester === courseNumber);
-    if (bySemester) return bySemester;
-
-    // Try by name containing the number
-    const byName = courses.find((c) =>
-      c.name.includes(courseNumber.toString())
-    );
-    return byName;
+    // Course is just a number, find direct match
+    return courses.find((c) => c === courseNumber);
   }
 
   private findGroupByNumber(
     groups: Group[],
     groupNumber: number
   ): Group | undefined {
-    // Try to find by parsed number from name
+    // Try to find by parsed number from group field
     const byParsedNumber = groups.find((g) => {
-      const parsed = parseGroupNumber(g.name);
+      const parsed = parseGroupNumber(g.group);
       return parsed === groupNumber;
     });
     if (byParsedNumber) return byParsedNumber;
 
-    // Try by name containing the number
-    const byName = groups.find((g) => g.name.includes(groupNumber.toString()));
+    // Try by group field containing the number
+    const byName = groups.find((g) =>
+      g.group?.includes(groupNumber.toString())
+    );
     return byName;
   }
 }

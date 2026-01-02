@@ -21,19 +21,22 @@ export interface Subject {
 }
 
 export interface Group {
-  id: number;
-  name: string;
-  studentCount: number;
-  courseId: number;
+  semesterProgramId: number;
+  semesterId: number;
+  programId: number;
+  course: number;
+  group: string;
+  program: {
+    programId: number;
+    titleLV: string;
+    titleEN: string;
+    code: string;
+  };
 }
 
-export interface Course {
-  id: number;
-  name: string;
-  code: string;
-  semester: number;
-  programId: number;
-}
+// The API returns course numbers directly as an array of numbers
+// e.g., [1, 2, 3] for courses 1, 2, 3
+export type Course = number;
 
 // HTML Parser Types
 export interface Semester {

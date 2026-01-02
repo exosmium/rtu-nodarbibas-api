@@ -42,6 +42,7 @@ const TYPE_MAPPINGS: Record<string, ScheduleEntryType> = {
  * Parse event type string to enum
  */
 export function parseEntryType(typeRaw: string): ScheduleEntryType {
+  if (!typeRaw) return 'other';
   const normalized = typeRaw.toLowerCase().trim();
   return TYPE_MAPPINGS[normalized] ?? 'other';
 }
@@ -309,7 +310,7 @@ export function parseProgramName(fullName: string): string {
  * "1. kurss" -> 1
  */
 export function parseCourseNumber(name: string | undefined): number {
-  if (!name) return 0;
+  if (name === undefined || name === '') return 0;
   const match = name.match(/(\d+)/);
   return match?.[1] !== undefined ? parseInt(match[1], 10) : 0;
 }
@@ -319,7 +320,7 @@ export function parseCourseNumber(name: string | undefined): number {
  * "13. grupa" -> 13, "DBI-13" -> 13
  */
 export function parseGroupNumber(name: string | undefined): number {
-  if (!name) return 0;
+  if (name === undefined || name === '') return 0;
   const match = name.match(/(\d+)/);
   return match?.[1] !== undefined ? parseInt(match[1], 10) : 0;
 }
