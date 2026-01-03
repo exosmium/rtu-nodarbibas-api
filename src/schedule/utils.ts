@@ -230,29 +230,20 @@ export function extractTime(isoDateTime: string): string {
  * Transform raw SemesterEvent to ScheduleEntry
  */
 export function transformToScheduleEntry(event: SemesterEvent): ScheduleEntry {
-  // Extract date components using UTC to avoid timezone shift
-  const eventDateObj = new Date(event.eventDate);
-  const year = eventDateObj.getUTCFullYear();
-  const month = eventDateObj.getUTCMonth();
-  const day = eventDateObj.getUTCDate();
+  // Create date from eventDate timestamp (API returns Latvia local midnight)
+  const date = new Date(event.eventDate);
+  date.setHours(0, 0, 0, 0);
 
-  // Create date at midnight (for grouping by day)
-  const date = new Date(year, month, day, 0, 0, 0, 0);
-
-  // Apply customStart/customEnd times to the correct date
-  const startDateTime = new Date(
-    year,
-    month,
-    day,
+  // Create DateTime objects from eventDate + customStart/customEnd
+  const startDateTime = new Date(event.eventDate);
+  startDateTime.setHours(
     event.customStart.hour,
     event.customStart.minute,
     event.customStart.second
   );
 
-  const endDateTime = new Date(
-    year,
-    month,
-    day,
+  const endDateTime = new Date(event.eventDate);
+  endDateTime.setHours(
     event.customEnd.hour,
     event.customEnd.minute,
     event.customEnd.second
